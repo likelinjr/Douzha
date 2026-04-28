@@ -1,0 +1,32 @@
+{
+  "name": "hachiware",
+  "version": "1.0.0",
+  "description": "A AI agent name hachiware",
+  "main": "src/index.ts",
+  "type": "module",
+  "scripts": {
+    "start": "tsx src/index.ts",
+    "dev": "tsx watch src/index.ts"
+  },
+  "dependencies": {
+    "@google/generative-ai": "^0.24.1",
+    "axios": "^1.6.0",
+    "dotenv": "^16.0.0",
+    "openai": "^6.34.0",
+    "pdf-parse": "^2.4.5",
+    "turndown": "^7.2.4",
+    "undici": "^8.1.0",
+    "unpdf": "^1.6.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "@types/pdf-parse": "^1.1.5",
+    "@types/turndown": "^5.0.6",
+    "@typescript-eslint/eslint-plugin": "^8.59.0",
+    "@typescript-eslint/parser": "^8.59.0",
+    "eslint": "^10.2.1",
+    "ts-node": "^10.9.0",
+    "tsx": "^4.21.0",
+    "typescript": "^5.0.0"
+  }
+}
