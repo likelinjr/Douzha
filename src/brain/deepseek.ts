@@ -1,9 +1,10 @@
 import OpenAI from "openai"
 import dotenv from 'dotenv'
 import { Message, AIResponse, ToolCall } from '../types/index.js'
-import { getSystemPrompt } from "./prompt.js"
-import { allToolsDefinition } from "../tools/index.js"
 import { THEMS } from "../config/theme.js"
+import { ToolDefinition } from "../types/tool.js"
+import { DEBUG_THINK, toolLog } from "../utils/debug.js"
+import { startShimmerText } from "../utils/shimmer.js"
 
 const { REASONING_COLOR, RESET_COLOR } = THEMS
 
@@ -14,7 +15,7 @@ const openai = new OpenAI({
   apiKey: process.env.DEEPSEEK_API_KEY,
 })
 
-export async function DeepSeekThink(messages: Message[]): Promise<AIResponse> {
+export async function DeepSeekThink(messages: Message[], toolsDefinitions :ToolDefinition[], systemPrompt: string, isDecide: boolean = false): Promise<AIResponse> {
   try {
     const sanitizedMessages = messages.map((msg: Message) => {
       const cleanMsg: Message = {
@@ -41,38 +42,42 @@ export async function DeepSeekThink(messages: Message[]): Promise<AIResponse> {
     })
     const stream = await openai.chat.completions.create({
       messages: [
-        { role: "system", content: getSystemPrompt() },
+        { role: "system", content: systemPrompt },
         ...sanitizedMessages as any
       ],
       model: process.env.DEEPSEEK_MODEL_NAME || "deepseek-chat",
-      tools: allToolsDefinition,
+      tools: toolsDefinitions,
       tool_choice: "auto",
       stream: true
     })
 
     let fullContent = ""
     let toolCalls: ToolCall[] = []
+    let stopShimmer: (() => void) | null = null
 
-    let isReasoning = false // 处理思考后换行
+    if (isDecide && !DEBUG_THINK) stopShimmer = startShimmerText('  Thinking...')
+
+    let isReasoning = false
     for await (const chunk of stream) {
       const delta = chunk.choices[0].delta
       if ((delta as any).reasoning_content) {
         isReasoning = true
         const rc = (delta as any).reasoning_content
-        process.stdout.write(`${REASONING_COLOR}${rc}${RESET_COLOR}`)
+        DEBUG_THINK && process.stdout.write(`${REASONING_COLOR}${rc}${RESET_COLOR}`)
       }
       if (delta.content) {
+        if (stopShimmer) { stopShimmer(); stopShimmer = null }
         if (isReasoning) {
-          process.stdout.write('\n')
+          DEBUG_THINK && !isDecide && process.stdout.write('\n')
           isReasoning = false
         }
         fullContent += delta.content
-        process.stdout.write(delta.content)
+        !isDecide && process.stdout.write(delta.content)
       }
 
       if (delta.tool_calls) {
         if (isReasoning) {
-          process.stdout.write('\n')
+          DEBUG_THINK && process.stdout.write('\n')
           isReasoning = false
         }
         delta.tool_calls.forEach((tc) => {
@@ -91,7 +96,7 @@ export async function DeepSeekThink(messages: Message[]): Promise<AIResponse> {
       }
     }
 
-    console.log("")
+    if (stopShimmer) stopShimmer()
 
     const finalMessage :Message = {
       role: "assistant",
@@ -100,13 +105,15 @@ export async function DeepSeekThink(messages: Message[]): Promise<AIResponse> {
     }
         
     if (toolCalls.length > 0) {
-      const toolCall = toolCalls[0] 
+      toolLog(`📋 DeepSeek 返回 ${toolCalls.length} 个工具调用`)
+      const actions = toolCalls.map(toolCall => ({
+        id: toolCall.id,
+        name: toolCall.function.name,
+        arguments: JSON.parse(toolCall.function.arguments)
+      }))
+      
       return {
-        action: {
-          id: toolCall.id,
-          name: toolCall.function.name,
-          arguments: JSON.parse(toolCall.function.arguments)
-        },
+        actions,
         answer: fullContent,
         raw: finalMessage 
       }

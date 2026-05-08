@@ -5,7 +5,7 @@ export const fileToolsDefinition :ToolDefinition[] = [
     type: "function",
     function: {
       name: "read_file",
-      description: "读取目录中文件的内容。适用于需要分析或处理文件数据时。",
+      description: "读取当前目录中文件的内容。适用于需要分析或处理文件数据时",
       parameters: {
         type: "object",
         properties: {
@@ -22,13 +22,13 @@ export const fileToolsDefinition :ToolDefinition[] = [
     type: "function",
     function: {
       name: "write_file",
-      description: "向指定路径写入文件。支持自动创建不存在的父目录。如果文件已存在，则会覆盖其内容。",
+      description: "在当前目录中，向指定路径写入文件。支持自动创建不存在的父目录。如果文件已存在，则会覆盖其内容",
       parameters: {
         type: "object",
         properties: {
           path: {
             type: "string",
-            description: "目标文件路径（相对于根目录）。可以包含子文件夹路径，例如 'src/main.js' 或 'css/style.css'，缺失的文件夹将被自动创建。"
+            description: "目标文件路径。可以包含子文件夹路径"
           },
           content: {
             type: "string",
@@ -43,13 +43,13 @@ export const fileToolsDefinition :ToolDefinition[] = [
     type: "function",
     function: {
       name: "list_files",
-      description: "列出当前工作目录或指定目录下的所有文件。",
+      description: "列出当前工作目录或指定目录下的所有文件",
       parameters: {
         type: "object",
         properties: {
           path: {
             type: "string",
-            description: "目录路径，默认为 '.' (根目录)"
+            description: "目录路径，默认为'.'"
           }
         }
       }
@@ -59,13 +59,13 @@ export const fileToolsDefinition :ToolDefinition[] = [
     type: "function",
     function: {
       name: "delete_file",
-      description: "从工作目录中永久删除指定的单个文件。",
+      description: "从工作目录中永久删除指定的单个文件",
       parameters: {
         type: "object",
         properties: {
           path: {
             type: "string",
-            description: "要删除的文件路径（相对于根目录，例如 'config.json' 或 'logs/old.txt'）"
+            description: "要删除的文件路径"
           }
         },
         required: ["path"]
@@ -76,7 +76,7 @@ export const fileToolsDefinition :ToolDefinition[] = [
     type: "function",
     function: {
       name: "copy_file",
-      description: "将工作目录的文件从一个位置复制到另一个位置。",
+      description: "将工作目录的文件从一个位置复制到另一个位置",
       parameters: {
         type: "object",
         properties: {

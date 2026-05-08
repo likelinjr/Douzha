@@ -1,28 +1,34 @@
 import { ToolDefinition } from "../../types/tool.js"
 
-export const planToolsDefinition :ToolDefinition[] = [{
-  type: "function",
-  function: {
-    name: "sync_task_plan",
-    description: "任务步骤的详细列表。注意：必须严格以数组（Array）格式传入。 每个步骤对象应包含：task (具体动作描述), status (状态：todo/doing/done), result (该步骤产出的关键结论或文件路径)。",
-    parameters: {
-      type: "object",
-      properties: {
-        goal: { type: "string", description: "总目标描述" },
-        plan: {
-          type: "array",
-          items: {
-            type: "object",
-            properties: {
-              task: { type: "string", description: "该步骤要做什么" },
-              status: { type: "string", enum: ["todo", "doing", "done"] },
-              result: { type: "string", description: "该步骤执行后的简要结果" }
+export const planToolsDefinition: ToolDefinition[] = [
+  {
+    type: "function",
+    function: {
+      name: "update_task_plan",
+      description: "更新任务计划的进度。当你完成或开始某个步骤时，调用此工具。你需要提供步骤的序号（1, 2, 3...）以及最新的状态。",
+      parameters: {
+        type: "object",
+        properties: {
+          plan_id: { type: "number", description: "任务计划的 ID" },
+          updates: {
+            type: "array",
+            description: "需要更新的步骤列表",
+            items: {
+              type: "object",
+              properties: {
+                step_order: { type: "number", description: "步骤的序号（从 1 开始）" },
+                status: { 
+                  type: "string", 
+                  enum: ["todo", "doing", "done", "failed"] 
+                },
+                result: { type: "string", description: "该步骤执行后的结果简述（可选）" }
+              },
+              required: ["step_order", "status"]
             }
           }
-        }
-      },
-      required: ["goal", "plan"]
+        },
+        required: ["plan_id", "updates"]
+      }
     }
   }
-}
 ]

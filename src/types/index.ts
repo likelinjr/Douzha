@@ -23,7 +23,7 @@ export interface ToolAction {
 }
 
 export interface AIResponse {
-    action?: ToolAction
+    actions?: ToolAction[]
     answer?: string | null
     raw?: Message
 }

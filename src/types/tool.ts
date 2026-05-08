@@ -21,8 +21,8 @@ export interface ToolDefinition {
 }
 
 export interface planStepType {
-  task: string
-  status: 'todo' | 'doing' | 'done'
+  step: string
+  status: 'todo' | 'doing' | 'done' | 'failed'
   result: string
 }
 
