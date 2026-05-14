@@ -76,3 +76,44 @@ export async function editFile(filePath: string, oldText: string, newText: strin
     return `❌ 修改出错: ${error.message}`
   }
 }
+
+async function buildTree(dirPath: string, prefix: string = "", isLast: boolean = true): Promise<string> {
+  const safePath = validatePath(dirPath)
+  const entries = await fs.readdir(safePath, { withFileTypes: true })
+  
+  let result = ""
+  const connector = isLast ? "└── " : "├── "
+  const extension = isLast ? "    " : "│   "
+  
+  for (let i = 0; i < entries.length; i++) {
+    const entry = entries[i]
+    const isLastEntry = i === entries.length - 1
+    const entryPrefix = prefix + connector
+    const childPrefix = prefix + extension
+    
+    result += `${entryPrefix}${entry.name}\n`
+    
+    if (entry.isDirectory()) {
+      const subDirPath = path.join(safePath, entry.name)
+      result += await buildTree(subDirPath, childPrefix, isLastEntry)
+    }
+  }
+  
+  return result
+}
+
+export async function getDirectoryTree(dirPath: string = "."): Promise<string> {
+  try {
+    const safePath = validatePath(dirPath)
+    const stats = await fs.stat(safePath)
+    
+    if (!stats.isDirectory()) {
+      return `❌ 路径不是目录: ${dirPath}`
+    }
+    
+    const tree = await buildTree(safePath)
+    return `📁 目录 [${dirPath}] 的文件结构树:\n${tree || "(空目录)"}`
+  } catch (error: any) {
+    return `❌ 获取目录结构失败: ${error.message}`
+  }
+}

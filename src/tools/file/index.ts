@@ -7,4 +7,5 @@ export const file_toolHandlers: Record<string, (args: any) => Promise<string>> =
   'delete_file': (args) => fileTools.deleteFile(args.path),
   'copy_file':   (args) => fileTools.copyFile(args.source, args.destination),
   'edit_file':   (args) => fileTools.editFile(args.path, args.old_text, args.new_text),
+  'get_directory_tree': (args) => fileTools.getDirectoryTree(args.path || "."),
 }

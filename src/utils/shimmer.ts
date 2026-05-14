@@ -3,11 +3,12 @@ const BRIGHT = '\x1b[1m'
 const CYAN = '\x1b[36m'
 const RESET = '\x1b[0m'
 
-export function startShimmerText(text: string): () => void {
+export function startShimmerText(text: string, newline: boolean = false): () => void {
   const chars = [...text]
   const len = chars.length
   let pos = len + 3
   let running = true
+  if (newline) process.stdout.write('\n')
   const timer = setInterval(() => {
     if (!running) return
     let rendered = ''

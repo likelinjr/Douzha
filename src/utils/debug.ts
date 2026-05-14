@@ -1,9 +1,14 @@
-import debug from 'debug'
+import { RESET, TOOL_COLOR, COMMON_COLOR } from "../config/theme.js"
 
-export const toolLog = debug('app:tool')
-export const thinkLog = debug('app:think')
-export const commonLog = debug('app:common')
+export const DEBUG = process.env.DEBUG === 'true'
 
-export const DEBUG_THINK = process.env.DEBUG_THINK === 'true'
-export const DEBUG_DECIDE = process.env.DEBUG_DECIDE === 'true'
-export const DEBUG_CHAT = process.env.DEBUG_CHAT === 'true'
+export function toolLog(...args: any[]): void {
+  if (process.env.DEBUG === 'true') {
+    console.log(TOOL_COLOR, ...args, RESET)
+  }
+}
+export function commonLog(...args: any[]): void {
+  if (process.env.DEBUG === 'true') {
+    console.log(COMMON_COLOR, ...args, RESET)
+  }
+}

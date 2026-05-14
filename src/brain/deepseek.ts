@@ -1,12 +1,10 @@
 import OpenAI from "openai"
 import dotenv from 'dotenv'
 import { Message, AIResponse, ToolCall } from '../types/index.js'
-import { THEMS } from "../config/theme.js"
+import { REASONING_COLOR, RESET } from "../config/theme.js"
 import { ToolDefinition } from "../types/tool.js"
-import { DEBUG_THINK, toolLog } from "../utils/debug.js"
+import { DEBUG, toolLog } from "../utils/debug.js"
 import { startShimmerText } from "../utils/shimmer.js"
-
-const { REASONING_COLOR, RESET_COLOR } = THEMS
 
 dotenv.config()
 
@@ -15,7 +13,7 @@ const openai = new OpenAI({
   apiKey: process.env.DEEPSEEK_API_KEY,
 })
 
-export async function DeepSeekThink(messages: Message[], toolsDefinitions :ToolDefinition[], systemPrompt: string, isDecide: boolean = false): Promise<AIResponse> {
+export async function DeepSeekThink(messages: Message[], toolsDefinitions :ToolDefinition[], systemPrompt: string, isDecide: boolean = false, options?: { onContent?: (text: string) => void; onThinking?: (text: string) => void }): Promise<AIResponse> {
   try {
     const sanitizedMessages = messages.map((msg: Message) => {
       const cleanMsg: Message = {
@@ -55,7 +53,7 @@ export async function DeepSeekThink(messages: Message[], toolsDefinitions :ToolD
     let toolCalls: ToolCall[] = []
     let stopShimmer: (() => void) | null = null
 
-    if (isDecide && !DEBUG_THINK) stopShimmer = startShimmerText('  Thinking...')
+    if (isDecide && !DEBUG) stopShimmer = startShimmerText('  Thinking...')
 
     let isReasoning = false
     for await (const chunk of stream) {
@@ -63,21 +61,23 @@ export async function DeepSeekThink(messages: Message[], toolsDefinitions :ToolD
       if ((delta as any).reasoning_content) {
         isReasoning = true
         const rc = (delta as any).reasoning_content
-        DEBUG_THINK && process.stdout.write(`${REASONING_COLOR}${rc}${RESET_COLOR}`)
+        DEBUG && process.stdout.write(`${REASONING_COLOR}${rc}${RESET}`)
+        if (rc.trim()) options?.onThinking?.(rc)
       }
       if (delta.content) {
         if (stopShimmer) { stopShimmer(); stopShimmer = null }
         if (isReasoning) {
-          DEBUG_THINK && !isDecide && process.stdout.write('\n')
+          DEBUG && !isDecide && process.stdout.write('\n')
           isReasoning = false
         }
         fullContent += delta.content
-        !isDecide && process.stdout.write(delta.content)
+        DEBUG && process.stdout.write(delta.content)
+        if (delta.content.trim()) options?.onContent?.(delta.content)
       }
 
       if (delta.tool_calls) {
         if (isReasoning) {
-          DEBUG_THINK && process.stdout.write('\n')
+          DEBUG && process.stdout.write('\n')
           isReasoning = false
         }
         delta.tool_calls.forEach((tc) => {

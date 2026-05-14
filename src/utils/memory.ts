@@ -1,37 +1,69 @@
-import fs from 'fs/promises'
-import path from 'path'
 import { SessionRow, MessageRow  } from '../types/historyStorage.js'
 import { Session, Message } from '../database/dbTools.js'
+import { commonLog } from './debug.js'
 
-const MEMORY_PATH = path.resolve(process.cwd(), 'data/memory.json')
-
-async function ensureDir() {
-  const dir = path.dirname(MEMORY_PATH)
-  try {
-    await fs.access(dir)
-  } catch {
-    await fs.mkdir(dir, { recursive: true })
-  }
+const CONTEXT_CONFIG = {
+  MAX_CONTEXT_LENGTH: parseInt(process.env.MAX_CONTEXT_LENGTH || '6000'),
+  MAX_MESSAGES: parseInt(process.env.MAX_MESSAGES || '8'),
+  MAX_SINGLE_MSG_LENGTH: parseInt(process.env.MAX_SINGLE_MSG_LENGTH || '500')
 }
 
-export async function saveMemory(sessions: SessionRow[]) {
-  await ensureDir()
-  const data = JSON.stringify(sessions, null, 2)
-  await fs.writeFile(MEMORY_PATH, data, 'utf-8')
+function truncateContent(content: string, maxLength: number): string {
+  if (content.length <= maxLength) return content
+  
+  const halfLength = Math.floor(maxLength / 2)
+  return content.slice(0, halfLength) + 
+         `\n...[省略 ${content.length - maxLength} 字符]...` + 
+         content.slice(-halfLength)
+}
+
+function buildSmartContext(messages: MessageRow[], maxLength: number = CONTEXT_CONFIG.MAX_CONTEXT_LENGTH): string {
+  const selected: { role: string; content: string }[] = []
+  let currentLength = 0
+
+  for (let i = messages.length - 1; i >= 0 && selected.length < CONTEXT_CONFIG.MAX_MESSAGES; i--) {
+    const msg = messages[i]
+    
+    if (!msg.content) continue
+    
+    let displayContent: string = msg.content
+    
+    if (msg.role === 'tool') {
+      displayContent = truncateContent(displayContent, CONTEXT_CONFIG.MAX_SINGLE_MSG_LENGTH)
+    }
+    
+    const entry = `${msg.role}: ${displayContent}\n`
+    
+    if (currentLength + entry.length > maxLength && selected.length > 0) break
+    
+    selected.unshift({ role: msg.role, content: displayContent })
+    currentLength += entry.length
+  }
+
+  return selected.map(m => `**${m.role}**: ${m.content}`).join('\n')
+}
+
+export async function saveMemory(message: MessageRow): Promise<number> {
+  const messageId = Message.create({
+    session_id: message.session_id,
+    role: message.role,
+    content: message.content,
+    tool_calls: message.tool_calls || null,
+    tool_call_id: message.tool_call_id || null
+  })
+  return messageId
 }
 
 export async function loadMemory(): Promise<string> {
   const memory = Session.getAll()
   if(memory.length === 0) return "暂无历史记录"
-  return memory.map(s => 
-    `会话ID:${s.id} | 标题:${s.summary}`
-  ).join('\n')
+  return memory.map(s => {
+    const msgCount = Message.getBySessionId(s.id).length
+    return `会话ID:${s.id} | 标题:${s.summary} | 消息数:${msgCount}`
+  }).join('\n')
 }
 
 export async function clearMemory() {
-  try {
-    await fs.unlink(MEMORY_PATH)
-  } catch {}
 }
 
 export async function getRecentContext(): Promise<string> {
@@ -41,8 +73,8 @@ export async function getRecentContext(): Promise<string> {
   }
   const latestSession: SessionRow = sessions[0] 
   const recentMessages: MessageRow[] = Message.getBySessionId(latestSession.id, 20) 
-  const recentString = `当前会话ID: ${latestSession.id}, 计划ID: ${latestSession.plan_id || '无'}\n最近8条内容:\n` + 
-      recentMessages.slice(-8).map(m => `${m.role}: ${m.content}`).join('\n')
+  const contextContent = buildSmartContext(recentMessages)
+  const recentString = `当前会话ID: ${latestSession.id}, 计划ID: ${latestSession.plan_id || '无'}\n最近对话内容:\n` + contextContent
   return recentString
 }
 
@@ -54,9 +86,8 @@ export async function getLatestSessionId(): Promise< number | null> {
   return sessions[0].id
 }
 
-// test
-// const loadMemory_result = await loadMemory()
-// console.log(loadMemory_result)
-// const getRecentContext_result = await getRecentContext()
-// console.log(getRecentContext_result)
+const loadMemory_result = await loadMemory()
+commonLog(loadMemory_result)
+const getRecentContext_result = await getRecentContext()
+commonLog(getRecentContext_result)
 

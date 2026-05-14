@@ -4,7 +4,7 @@ import { think } from './index.js'
 import { HACHIWARE_IDENTITY } from './identity.js'
 import { loadMemory, getRecentContext } from '../utils/memory.js'
 import { Session, TaskPlan, PlanStep } from '../database/dbTools.js'
-import { commonLog, DEBUG_DECIDE } from '../utils/debug.js'
+import { commonLog } from '../utils/debug.js'
 import { getLatestSessionId } from '../utils/memory.js'
 
 function getDecisionPrompt(memory: string, recentContext: string): string {
@@ -19,8 +19,8 @@ function getDecisionPrompt(memory: string, recentContext: string): string {
  
     # 当前任务
     分析用户最新消息，判断意图：
-    1. **continue**: 用户在继续当前话题。
-    2. **new_task**: 用户想要进行全新的、独立的话题。
+    1. **continue**: 用户继续当前话题（会话id最大的会话），如果用户想要继续历史对话，不能选择continue，必须选择new
+    2. **new**: 用户想要进行全新的、独立的话题。
     3. 你并不需要做出任何回答，当前阶段只完成以上任务。
     4. 根据用户问题复杂度，如果任务较为复杂，选择 advanced，否则选择 base。
     5. 非必要不创建任务计划，除非是复杂任务。
@@ -28,7 +28,7 @@ function getDecisionPrompt(memory: string, recentContext: string): string {
     # 输出规范
     直接输出 JSON，格式如下：
     {
-      "intent": "continue" | "new_task",
+      "intent": "continue" | "new",
       "level": "base" | "advanced",
       "new_plan_goal": "如果是新复杂任务，提供计划目标，否则null",
       "new_session_summary": "如果是新任务，提供简短标题，否则null",
@@ -58,12 +58,12 @@ export async function runDecision(
     if (!match) throw new Error("未匹配到 JSON")
     const decision = JSON.parse(match[0])
 
-    if (decision.intent === 'new_task') {
+    if (decision.intent === 'new') {
 
-      DEBUG_DECIDE && console.log("\n") // 美观输出
-      commonLog("🆕 识别到新任务，正在自动创建环境与步骤...")
+      commonLog("\n\nAI识别为新任务，正在自动创建环境与步骤...")
       
       let plan_id: number | null = null
+
       if (decision.new_plan_goal) {
         commonLog(`📋 创建任务计划，目标: ${decision.new_plan_goal}`)
         plan_id = TaskPlan.create({ goal: decision.new_plan_goal, status: 'todo' })
@@ -72,7 +72,7 @@ export async function runDecision(
         if (Array.isArray(decision.steps) && decision.steps.length > 0) {
           commonLog(`📝 添加 ${decision.steps.length} 个计划步骤...`)
           decision.steps.forEach((stepText: string, index: number) => {
-            commonLog(`  步骤 ${index + 1}: ${stepText}`)
+            commonLog(`步骤 ${index + 1}: ${stepText}`)
             PlanStep.create({
               plan_id: plan_id as number,
               step: stepText,
@@ -83,11 +83,14 @@ export async function runDecision(
           })
         }
       } else {
-        commonLog(`ℹ️  未提供 new_plan_goal，不创建任务计划`)
+        commonLog(`未提供 new_plan_goal，不创建任务计划`)
       }
       
       const session_id = Session.create(decision.new_session_summary || "新会话", plan_id)
       return { level: decision.level, plan_id: plan_id || undefined, session_id }
+    }
+    else {
+      commonLog("\n\n继续上一个话题")
     }
 
     return { 

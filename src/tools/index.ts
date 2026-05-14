@@ -20,6 +20,10 @@ import { location_toolHandlers } from './location/index.js'
 import { session_toolHandlers } from './session/index.js'
 import { historyToolsDefinition } from './history/definition.js'
 import { history_toolHandlers } from './history/index.js'
+import { downloadToolsDefinition } from './download/definition.js'
+import { download_toolHandlers } from './download/index.js'
+import { extractToolsDefinition } from './extract/definition.js'
+import { extract_toolHandlers } from './extract/index.js'
 
 export const allToolsDefinition :ToolDefinition[] = [
   ...fileToolsDefinition,
@@ -31,7 +35,9 @@ export const allToolsDefinition :ToolDefinition[] = [
   ...musicToolsDefinition,
   ...videoToolsDefinition,
   ...locationToolsDefinition,
-  ...historyToolsDefinition
+  ...historyToolsDefinition,
+  ...downloadToolsDefinition,
+  ...extractToolsDefinition
 ]
 
 export const toolHandlers: Record<string, (args: any) => Promise<string>> = {
@@ -45,5 +51,7 @@ export const toolHandlers: Record<string, (args: any) => Promise<string>> = {
   ...video_toolHandlers,
   ...location_toolHandlers,
   ...session_toolHandlers,
-  ...history_toolHandlers
+  ...history_toolHandlers,
+  ...download_toolHandlers,
+  ...extract_toolHandlers
 }

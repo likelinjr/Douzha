@@ -12,7 +12,7 @@ async function printStartupBanner() {
   const lines = character.split('\n')
   for (const line of lines) {
     console.log(line)
-    await new Promise(resolve => setTimeout(resolve, 50))
+    await new Promise(resolve => setTimeout(resolve, 10))
   }
   const poem = poems[Math.floor(Math.random() * poems.length)]
   console.log(`🕐 ${getCurrentTime()}`)
@@ -49,7 +49,7 @@ async function bootstrap() {
       rl.prompt()
     } catch (err: any) {
       console.error("\n💥 运行过程中发生崩溃:", err.message || err)
-      console.log("🔄 尝试重启循环...\n")
+      console.log("\n🔄 尝试重启循环...\n")
       rl.prompt()
     }
   })

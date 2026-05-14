@@ -1,12 +1,9 @@
 import OpenAI from "openai"
 import dotenv from 'dotenv'
 import { Message, AIResponse, ToolCall } from '../types/index.js'
-import { THEMS } from "../config/theme.js"
+import { REASONING_COLOR, RESET } from "../config/theme.js"
 import { ToolDefinition } from "../types/tool.js"
-import { commonLog, DEBUG_CHAT, DEBUG_THINK, toolLog } from "../utils/debug.js"
-import { startShimmerText } from "../utils/shimmer.js"
-
-const { REASONING_COLOR, RESET_COLOR } = THEMS
+import { commonLog, DEBUG, toolLog } from "../utils/debug.js"
 
 dotenv.config()
 
@@ -15,7 +12,7 @@ const zhipuOpenai = new OpenAI({
   apiKey: process.env.ZHIPU_API_KEY,
 })
 
-export async function BigModelThink(messages: Message[], toolsDefinitions :ToolDefinition[], systemPrompt: string, isDecide: boolean = false): Promise<AIResponse> {
+export async function BigModelThink(messages: Message[], toolsDefinitions :ToolDefinition[], systemPrompt: string, isDecide: boolean = false, options?: { onContent?: (text: string) => void, onThinking?: (text: string) => void }): Promise<AIResponse> {
   try {
     const sanitizedMessages = messages.map((msg: Message) => {
       const cleanMsg :Message = {
@@ -56,81 +53,55 @@ export async function BigModelThink(messages: Message[], toolsDefinitions :ToolD
     let toolCalls: ToolCall[] = []
     let finishReason: string | null = null // 用于记录流结束的原因
     let isThinking = false    
+
+    for await (const chunk of stream) {
     
-    let stopThinkShimmer: (() => void) | null = null
-    let stopWorkingShimmer: (() => void) | null = null
-    let work_shimmer = false
-    let think_shimmer = false
-    let lastActiveTime = Date.now()
-
-    const blockageMonitor = !DEBUG_CHAT ? setInterval(() => {
-      const silentDuration = Date.now() - lastActiveTime
-      if (silentDuration > 2000 && !work_shimmer) {
-        stopWorkingShimmer = startShimmerText('  Working...')
-        work_shimmer = true
+      const choice = chunk.choices[0]
+      const delta = choice.delta
+      if (choice.finish_reason) {
+        finishReason = choice.finish_reason // 用于记录流结束的原因
       }
-    }, 1000) : 0 // 非开发模式下，tools太长，strem阻塞时，显示Working
-
-    if (!DEBUG_THINK) {
-      stopThinkShimmer = startShimmerText('  Thinking...')
-      think_shimmer = true
-    } // 显示Thinking
-
-    try {
-      for await (const chunk of stream) {
-
-        !DEBUG_CHAT && (lastActiveTime = Date.now()) // 配合blockageMonitor
-        
-        const choice = chunk.choices[0]
-        const delta = choice.delta
-        if (choice.finish_reason) {
-          finishReason = choice.finish_reason // 用于记录流结束的原因
-        }
  
-        // 思考过程...
-        if ((delta as any).reasoning_content) {
-          isThinking = true
-          const rc = (delta as any).reasoning_content
-          DEBUG_THINK && process.stdout.write(`${REASONING_COLOR}${rc}${RESET_COLOR}`) // debug下打印思考过程
+      // 思考过程...
+      if ((delta as any).reasoning_content) {
+        isThinking = true
+        const rc = (delta as any).reasoning_content
+        DEBUG && rc.trim() && process.stdout.write(`${REASONING_COLOR}${rc}${RESET}`)
+        if (rc.trim()) {
+          options?.onThinking?.(rc)
         }
+      }
 
-        if (delta.content) {
-          if(isThinking && DEBUG_THINK && delta.content.trim() !== ""){
-            console.log("")  // 分开思考和内容
-            isThinking = false
-          }
-          if (isThinking && think_shimmer && stopThinkShimmer) {
-          // 停止思考标志
-            stopThinkShimmer()
-            stopThinkShimmer = null 
-            think_shimmer = false
-            isThinking = false
-          }
-          fullContent += delta.content;
-          ( DEBUG_THINK || !isDecide ) && process.stdout.write(delta.content)
+      if (delta.content) {
+        if(isThinking && DEBUG && delta.content.trim() !== ""){
+          console.log("")
+          isThinking = false
         }
+        if (isThinking) {
+          isThinking = false
+        }
+        fullContent += delta.content
+        DEBUG && delta.content.trim() && process.stdout.write(delta.content)
+        if (delta.content.trim()) {
+          options?.onContent?.(delta.content)
+        }
+      }
 
-        if (delta.tool_calls) {
-          delta.tool_calls.forEach((tc) => {
-            const index = tc.index
-            if (!toolCalls[index]) {
-              toolCalls[index] = { 
-                id: "", 
-                type: "function", 
-                function: { name: "", arguments: "" } 
-              }
+      if (delta.tool_calls) {
+        delta.tool_calls.forEach((tc) => {
+          const index = tc.index
+          if (!toolCalls[index]) {
+            toolCalls[index] = { 
+              id: "", 
+              type: "function", 
+              function: { name: "", arguments: "" } 
             }
-            if (tc.id) toolCalls[index].id = tc.id
-            if (tc.function?.name) toolCalls[index].function.name += tc.function.name
-            if (tc.function?.arguments) toolCalls[index].function.arguments += tc.function.arguments
-          })
-        }  
-      }
-    } finally {
-      if(think_shimmer && stopWorkingShimmer){
-        (stopWorkingShimmer as () => void)()
-      }
-      clearInterval(blockageMonitor)
+          }
+          if (tc.id) toolCalls[index].id = tc.id
+          if (tc.function?.name) toolCalls[index].function.name += tc.function.name
+          if (tc.function?.arguments) toolCalls[index].function.arguments += tc.function.arguments
+        })
+      }  
     }
 
     if (finishReason && finishReason !== 'stop' && finishReason !== 'tool_calls') {

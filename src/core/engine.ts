@@ -4,11 +4,10 @@ import { allToolsDefinition, toolHandlers } from '../tools/index.js'
 import { getTaskPlan } from '../tools/plan/tools.js'
 import { getSystemPrompt } from '../brain/prompt.js'
 import { runDecision } from '../brain/decisionMaker.js'
-import { Message as MessageDB } from '../database/dbTools.js'
-import { loadMemory, getRecentContext } from '../utils/memory.js'
-import { toolLog, commonLog, DEBUG_CHAT } from '../utils/debug.js'
+import { loadMemory, getRecentContext, saveMemory } from '../utils/memory.js'
+import { toolLog, commonLog, DEBUG } from '../utils/debug.js'
 
-export async function run(userMessage: string) {
+export async function run(userMessage: string, options?: { onContent?: (text: string) => void; onThinking?: (text: string) => void }) {
 
   const memory = await loadMemory()
   const memoryString = `[系统内部参考 - 历史会话索引（仅供你理解上下文使用，切勿向用户展示ID或原样输出）]\n` + memory
@@ -22,7 +21,7 @@ export async function run(userMessage: string) {
 
   const sessionMessages: Message[] = [{ role: 'user', content: userMessage }]
 
-  await MessageDB.create({
+  await saveMemory({
     session_id: Number(session_id),
     role: 'user',
     content: userMessage,
@@ -33,12 +32,11 @@ export async function run(userMessage: string) {
   let isRunning = true
   let step = 1
   let finalAnswer = ''
-  const MAX_STEPS = 50
+  const MAX_STEPS = 300
 
   while (isRunning && step <= MAX_STEPS) {
 
-    DEBUG_CHAT && console.log("") // 美观输出
-    commonLog(`--- 第 [${step}] 轮思考 ---`)
+    commonLog(`\n第 ${step} 轮思考\n`)
 
     const planInfo = await getTaskPlan({ planId: Number(plan_id), sessionId: Number(session_id) })
     const dynamicSystemPrompt = `${getSystemPrompt()}\n\n${memoryString}\n\n${recentContext}\n\n${planInfo}`
@@ -46,12 +44,14 @@ export async function run(userMessage: string) {
       sessionMessages,
       allToolsDefinition, 
       dynamicSystemPrompt,
-      selectedModel
+      selectedModel,
+      false,
+      options
     ) 
 
     if (response.raw) {
       sessionMessages.push(response.raw),
-      await MessageDB.create({
+      await saveMemory({
         session_id: Number(session_id),
         role: response.raw.role,
         content: response.raw.content,
@@ -61,10 +61,10 @@ export async function run(userMessage: string) {
     }
 
     if (response.actions && response.actions.length > 0) {
-      commonLog(`🔧 收到 ${response.actions.length} 个并行工具调用`)
+      commonLog(`\n收到 ${response.actions.length} 个并行工具调用`)
       for (const action of response.actions) {
         const { name, arguments: args, id } = action
-        toolLog(`🛠️ 执行工具: ${name}`)
+        toolLog(`\n执行工具: ${name}\n`)
 
         let toolResult = ""
         try {
@@ -78,14 +78,14 @@ export async function run(userMessage: string) {
           toolResult = `❌ 执行失败: ${e.message}`
         }
 
-        toolLog(`📝 工具反馈: ${toolResult.substring(0, 100)}${toolResult.length > 100 ? '...' : ''}`)
+        toolLog(`工具反馈: ${toolResult.substring(0, 100)}${toolResult.length > 100 ? '...' : ''}`)
 
         sessionMessages.push({ 
           role: 'tool', 
           tool_call_id: id,
           content: toolResult
         })
-        await MessageDB.create({
+        await saveMemory({
           session_id: Number(session_id),
           role: 'tool',
           content: toolResult,
@@ -96,9 +96,8 @@ export async function run(userMessage: string) {
 
     } else {
       
-      console.log("\n") // 美观输出
-      commonLog(`✅ 任务完成！`)
-      DEBUG_CHAT && console.log("") // 美观输出
+      commonLog(`\n\n✅ 任务完成！\n`)
+      !DEBUG && console.log('\n')
 
       finalAnswer = response.answer || ''
       isRunning = false
@@ -107,7 +106,7 @@ export async function run(userMessage: string) {
   }
 
   if (step > MAX_STEPS && isRunning) {
-    console.warn("\n⚠️ 达到最大步数限制，任务强制中止。")
+    console.warn("\n\n⚠️ 达到最大步数限制，任务强制中止。")
   }
 
   return finalAnswer

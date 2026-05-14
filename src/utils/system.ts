@@ -23,3 +23,5 @@ export const getCurrentTime = ( isDetal:boolean=false ):string => {
   const timeStr = `${format(now.getHours())}点${format(now.getMinutes())}分${format(now.getSeconds())}秒`
   return `${dateStr} ${dayStr} ${ isDetal ? timeStr:"" }`
 }
+
+export const getFormattedTime = () =>  `[${new Date().toLocaleTimeString('en-GB', { hour12: false })}]`

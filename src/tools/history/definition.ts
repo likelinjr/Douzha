@@ -23,7 +23,8 @@ export const historyToolsDefinition: ToolDefinition[] = [
         properties: {
           session_id: { type: "number", description: "要查看的会话 ID（从 list_sessions 获取）" },
           plan_id: { type: "number", description: "关联的计划 ID（可选）" },
-          limit: { type: "number", description: "获取的消息条数，默认 10" }
+          limit: { type: "number", description: "获取的消息条数，默认 10" },
+          offset: { type: "number", description: "跳过的消息条数，默认 0（用于分页）" }
         },
         required: ["session_id"]
       }

@@ -29,12 +29,9 @@ export const Session = {
   }
 }
 
-/**
- * --- 消息管理 (Message) ---
- */
+// 消息管理
 export const Message = {
-  // 使用 Omit 排除掉数据库自增的 id 和 created_at
-  create(msg: Omit<MessageRow, 'id' | 'created_at'>): number {
+  create(msg: MessageRow): number {
     const stmt = dbManager.db.prepare(`
       INSERT INTO messages (session_id, role, content, tool_calls, tool_call_id)
       VALUES (@session_id, @role, @content, @tool_calls, @tool_call_id)
@@ -53,16 +50,13 @@ export const Message = {
       WHERE session_id = ? 
       ORDER BY created_at DESC 
       LIMIT ? OFFSET ?
-    `) 
+    `)
     const rows = stmt.all(sessionId, limit, offset) as MessageRow[]
     return rows.reverse() 
   }
 }
 
-/**
- * --- 任务计划管理 (TaskPlan) ---
- * 逻辑：计划先于会话创建，不持有 session_id
- */
+// 任务计划管理
 export const TaskPlan = {
   create(plan: Omit<TaskPlanRow, 'id' | 'created_at' | 'updated_at'>): number {
     const stmt = dbManager.db.prepare(`
@@ -104,9 +98,7 @@ export const TaskPlan = {
   }
 }
 
-/**
- * --- 计划步骤管理 (PlanStep) ---
- */
+// 计划步骤管理
 export const PlanStep = {
   create(step: Omit<PlanStepRow, 'id'>): number {
     const stmt = dbManager.db.prepare(`

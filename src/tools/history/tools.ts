@@ -9,7 +9,7 @@ export async function listSessions(): Promise<string> {
     }
 
     const lines = sessions.map((s, i) => {
-      const msgCount = Message.getBySessionId(s.id, 1).length
+      const msgCount = Message.getBySessionId(s.id, Number.MAX_SAFE_INTEGER).length
       return `${i + 1}. [${s.id}] ${s.summary || 'unnamed'} (${msgCount} msgs)`
     })
 
@@ -36,9 +36,9 @@ export async function getHistoryDetail(
       
       if (messages.length > 0) {
         const msgList = messages.map(m => `${m.role}: ${m.content}`).join('\n')
-        result += `\nmessages:\n${msgList}\n`
+        result += `**获取到的历史消息内容从此处开始**:\n${msgList}\n**获取到的历史消息内容从此处结束**`
       } else {
-        result += "messages: (empty)\n"
+        result += "无历史消息\n"
       }
     } else {
       return "ERROR: session not found"
@@ -47,7 +47,7 @@ export async function getHistoryDetail(
     const targetPlanId = planId || (session?.plan_id)
     if (targetPlanId) {
       const planInfo = await getTaskPlan({ planId: Number(targetPlanId) })
-      result += `\nplan:\n${planInfo}`
+      result += `\nplan（该历史会话对应的任务计划）:\n${planInfo}`
     }
 
     return result

@@ -97,7 +97,7 @@ export const fileToolsDefinition :ToolDefinition[] = [
     type: "function",
     function: {
       name: "edit_file",
-      description: "对文本文件进行局部修改。适用于任何文本文件。通过提供一段文件中现有的、唯一的‘旧文字’，并给出‘新文字’来完成替换。",
+      description: "对文本文件进行局部修改。适用于任何文本文件。通过提供一段文件中现有的、唯一的'旧文字'，并给出'新文字'来完成替换。",
       parameters: {
         type: "object",
         properties: {
@@ -106,6 +106,22 @@ export const fileToolsDefinition :ToolDefinition[] = [
           new_text: { type: "string", description: "准备替换进去的新文字。" }
         },
         required: ["path", "old_text", "new_text"]
+      }
+    }
+  },
+  {
+    type: "function",
+    function: {
+      name: "get_directory_tree",
+      description: "获取当前工作目录或指定目录的完整文件结构树，以树形图展示所有文件和子目录的层级关系",
+      parameters: {
+        type: "object",
+        properties: {
+          path: {
+            type: "string",
+            description: "要查看的目录路径，默认为当前工作目录 '.'"
+          }
+        }
       }
     }
   }

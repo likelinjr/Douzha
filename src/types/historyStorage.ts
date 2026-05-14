@@ -11,7 +11,7 @@ export interface SessionRow {
 }
 
 export interface MessageRow {
-    id: number;
+    id?: number;
     session_id: number;
     role: Role;       
     content: string | null
