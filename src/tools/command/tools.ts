@@ -3,7 +3,6 @@ import { promisify } from 'util'
 import { validatePath } from '../../utils/security.js'
 
 const execFilePromise = promisify(execFile)
-
 function smartDecode(buf: Buffer | null | undefined): string {
   if (!buf || buf.length === 0) return ""
   if (process.platform !== 'win32') {
@@ -28,10 +27,8 @@ export async function executeCommand(file: string, args: string[] = [], cwd: str
       timeout: 30000,
       env
     })
-
     const result = smartDecode(stdout)
     const errResult = smartDecode(stderr)
-
     return result.trim() || (errResult ? `[警告/错误输出]: ${errResult}` : "✅执行成功")
   } catch (error: any) {
     if (error.stderr && error.stderr.length > 0) {

@@ -1,101 +1,140 @@
-import { executeCommand } from '../command/tools.js'
-import { think } from '../../brain/index.js'
-const speaker_ip = process.env.SPEAKER_IP
+import { exec } from 'child_process'
+import { promisify } from 'util'
+import path from 'path'
+import fs from 'fs'
+import { validatePath } from '../../utils/security.js'
 
-async function searchBilibili(keyword: string): Promise<string> {
-  const args = [
-    '--cookies', 'www.bilibili.com_cookies.txt',
-    '--add-header', 'Referer: https://www.bilibili.com',
-    '--user-agent', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36',
-    '--print', '%(index)d. [%(id)s] %(title)s | 播放量: %(view_count)s | 时长: %(duration_string)s',
-    `bilisearch5:${keyword}`
-  ]
-  
-  const stdout = await executeCommand('yt-dlp', args)
-  
-  if (!stdout || stdout.trim().length === 0 || stdout.includes('❌')) {
-    throw new Error(stdout || '搜索结果为空')
-  }
-  return stdout
+const execAsync = promisify(exec)
+
+const AUDIO_EXTENSIONS = new Set([
+  '.mp3', '.flac', '.wav', '.aac', '.ogg', '.m4a', '.wma', '.opus', '.ape', '.alac'
+])
+
+function isAudioFile(filePath: string): boolean {
+  return AUDIO_EXTENSIONS.has(path.extname(filePath).toLowerCase())
 }
 
-async function aiSelectVideo(searchResults: string, keyword: string): Promise<string> {
-  const prompt = `用户想听歌曲: "${keyword}"
-
-以下是搜索结果:
-${searchResults}
-
-请从中选择最匹配的一个，优先选择播放量最高的，直接输出视频的 BV 编号（如 BV1Ss4peuEzV），不要输出其他内容。只输出一个 BV 号。`
-
-  const response = await think(
-    [{ role: 'user', content: prompt }],
-    [],
-    '',
-    process.env.DECISION_MAKER || 'deepseek',
-    false
-  )
-  
-  const answer = (response.answer || '').trim()
-  const bvMatch = answer.match(/BV[\w]+/i)
-  
-  if (bvMatch) {
-    return bvMatch[0]
-  }
-  
-  if (!answer || answer === 'null' || answer === '未定义') {
-    const fallbackMatch = searchResults.match(/BV[\w]+/i)
-    return fallbackMatch ? fallbackMatch[0] : ''
-  }
-  
-  const fallbackMatch = searchResults.match(/BV[\w]+/i)
-  return fallbackMatch ? fallbackMatch[0] : ''
-}
-
-export async function playOnlineMusic(keyword: string): Promise<string> {
+function getAudioFilesInDir(dirPath: string): string[] {
   try {
-    const searchResults = await searchBilibili(keyword)
-    
-    if (!searchResults || searchResults.trim().length === 0) {
-      return `❌ 未找到 "${keyword}" 相关结果`
-    }
+    const files = fs.readdirSync(dirPath)
+    return files
+      .filter(f => isAudioFile(f))
+      .map(f => path.join(dirPath, f))
+  } catch {
+    return []
+  }
+}
 
-    const bvId = await aiSelectVideo(searchResults, keyword)
-    
-    if (!bvId) {
-      return `❌ 无法从搜索结果中提取有效的 BV 号`
+export async function playSong(filePath: string): Promise<string> {
+  try {
+    const resolved = validatePath(filePath)
+    if (!fs.existsSync(resolved)) {
+      return `❌ 文件不存在: ${filePath}`
     }
-
-    await stopMusic()
-
-    
-    const sshArgs = [
-      '-o', 'ConnectTimeout=30',
-      `root@${speaker_ip}`,
-      `nohup mpv --no-video --audio-device=alsa/plughw:2,0 --ytdl-raw-options=cookies='/root/bili_cookies.txt' 'https://www.bilibili.com/video/${bvId}' > /dev/null 2>&1 &`
-    ]
-    
-    const result = await executeCommand('ssh', sshArgs)
-    
-    if (result.includes('❌') && !result.includes('Warning')) {
-      return result
+    if (!isAudioFile(resolved)) {
+      return `❌ 不是支持的音频文件: ${path.extname(resolved)}`
     }
-    
-    return `✅ 正在播放: ${keyword} (${bvId})`
-    
+    try { await execAsync('taskkill /f /im mpv.exe') } catch {}
+    const command = `start /b mpv --no-video "${resolved}"`
+    exec(command)
+    return `✅ 正在播放: ${path.basename(resolved)}`
   } catch (error: any) {
-    if (error.message.includes('ETIMEDOUT') || error.message.includes('Connection refused')) {
-      return '❌ 无法连接到音箱，请检查设备是否在线'
+    return `❌ 播放失败: ${error.message}`
+  }
+}
+
+export async function playFolder(folderPath: string): Promise<string> {
+  try {
+    const resolved = validatePath(folderPath)
+    if (!fs.existsSync(resolved)) {
+      return `❌ 文件夹不存在: ${folderPath}`
     }
+    const stat = fs.statSync(resolved)
+    if (!stat.isDirectory()) {
+      return `❌ 路径不是文件夹: ${folderPath}`
+    }
+    const audioFiles = getAudioFilesInDir(resolved)
+    if (audioFiles.length === 0) {
+      return `❌ 文件夹中没有音频文件: ${folderPath}`
+    }
+    try { await execAsync('taskkill /f /im mpv.exe') } catch {}
+    const command = `start /b mpv --no-video "${resolved}"`
+    exec(command)
+    return `✅ 正在播放文件夹: ${path.basename(resolved)} (共 ${audioFiles.length} 首音频)`
+  } catch (error: any) {
+    return `❌ 播放失败: ${error.message}`
+  }
+}
+
+export async function shufflePlay(folderPath: string): Promise<string> {
+  try {
+    const resolved = validatePath(folderPath)
+    if (!fs.existsSync(resolved)) {
+      return `❌ 文件夹不存在: ${folderPath}`
+    }
+    const stat = fs.statSync(resolved)
+    if (!stat.isDirectory()) {
+      return `❌ 路径不是文件夹: ${folderPath}`
+    }
+    const audioFiles = getAudioFilesInDir(resolved)
+    if (audioFiles.length === 0) {
+      return `❌ 文件夹中没有音频文件: ${folderPath}`
+    }
+    try { await execAsync('taskkill /f /im mpv.exe') } catch {}
+    const command = `start /b mpv --no-video --shuffle "${resolved}"`
+    exec(command)
+    return `✅ 正在随机播放: ${path.basename(resolved)} (共 ${audioFiles.length} 首音频)`
+  } catch (error: any) {
+    return `❌ 播放失败: ${error.message}`
+  }
+}
+
+export async function loopSong(filePath: string): Promise<string> {
+  try {
+    const resolved = validatePath(filePath)
+    if (!fs.existsSync(resolved)) {
+      return `❌ 文件不存在: ${filePath}`
+    }
+    if (!isAudioFile(resolved)) {
+      return `❌ 不是支持的音频文件: ${path.extname(resolved)}`
+    }
+    try { await execAsync('taskkill /f /im mpv.exe') } catch {}
+    const command = `start /b mpv --no-video --loop=inf "${resolved}"`
+    exec(command)
+    return `✅ 正在单曲循环: ${path.basename(resolved)}`
+  } catch (error: any) {
+    return `❌ 播放失败: ${error.message}`
+  }
+}
+
+export async function loopFolder(folderPath: string): Promise<string> {
+  try {
+    const resolved = validatePath(folderPath)
+    if (!fs.existsSync(resolved)) {
+      return `❌ 文件夹不存在: ${folderPath}`
+    }
+    const stat = fs.statSync(resolved)
+    if (!stat.isDirectory()) {
+      return `❌ 路径不是文件夹: ${folderPath}`
+    }
+    const audioFiles = getAudioFilesInDir(resolved)
+    if (audioFiles.length === 0) {
+      return `❌ 文件夹中没有音频文件: ${folderPath}`
+    }
+    try { await execAsync('taskkill /f /im mpv.exe') } catch {}
+    const command = `start /b mpv --no-video --loop-playlist=inf "${resolved}"`
+    exec(command)
+    return `✅ 正在列表循环: ${path.basename(resolved)} (共 ${audioFiles.length} 首音频)`
+  } catch (error: any) {
     return `❌ 播放失败: ${error.message}`
   }
 }
 
 export async function stopMusic(): Promise<string> {
   try {
-    const stopArgs = [`root@${speaker_ip}`, 'pkill -f mpv']
-    const result = await executeCommand('ssh', stopArgs)
-    return result.includes('❌') ? "ℹ️ 当前似乎没有正在播放。" : "✅ 音乐已停止播放。"
+    await execAsync('taskkill /f /im mpv.exe')
+    return '✅ 音乐已停止。'
   } catch {
-    return "ℹ️ 当前似乎没有正在播放。"
+    return 'ℹ️ 当前没有正在播放的音乐。'
   }
 }

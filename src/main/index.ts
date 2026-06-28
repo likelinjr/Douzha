@@ -1,10 +1,12 @@
 import { run } from '../core/engine.js'
+import { isDirective, executeDirective } from '../directive/index.js'
 import dotenv from 'dotenv'
 import readline from 'node:readline/promises'
 import { stdin as input, stdout as output } from 'node:process'
 import { character } from './character.js'
 import { poems } from './poems.js'
 import { getCurrentTime, osInfo } from '../utils/system.js'
+import './initiate.js'
 
 dotenv.config()
 
@@ -18,6 +20,9 @@ async function printStartupBanner() {
   console.log(`🕐 ${getCurrentTime()}`)
   console.log(`💻 操作系统 ${osInfo}`)
   console.log(`📜 ${poem}`)
+  console.log('📋 输入 /hello 查看指令')
+  console.log("💡 输入'Q'退出")
+  console.log("")  
 }
 
 await printStartupBanner()
@@ -30,8 +35,6 @@ async function bootstrap() {
     prompt: '>> ',
     terminal: false
   })
-  console.log("💡 输入'Q'退出")
-  console.log("")
 
   rl.prompt()
 
@@ -45,6 +48,13 @@ async function bootstrap() {
         rl.prompt()
         return
       }
+
+      if (isDirective(userInput)) {
+        await executeDirective(userInput)
+        rl.prompt()
+        return
+      }
+
       await run(userInput)
       rl.prompt()
     } catch (err: any) {

@@ -9,7 +9,6 @@ const turndownService = new TurndownService({
 
 // 过滤掉不需要的标签
 turndownService.remove(['script', 'style', 'noscript', 'iframe', 'header', 'footer', 'nav'])
-
 export async function httpRequest(
   url: string,
   method: string = "GET",
@@ -24,16 +23,12 @@ export async function httpRequest(
         ...headers
       }
     }
-
     if (body && ["POST", "PUT", "PATCH"].includes(options.method!)) {
       options.body = body
     }
-
     const response = await fetch(url, options)
     const contentType = response.headers.get("content-type") || ""
-    
     let resultText = ""
-
     if (contentType.includes("application/json")) {
       const json = await response.json()
       resultText = JSON.stringify(json, null, 2)
@@ -50,16 +45,13 @@ export async function httpRequest(
     else {
       resultText = await response.text()
     }
-
     const resultPrefix = `🌐 [${options.method}] ${url} -> 状态码: ${response.status} ${response.statusText}\n`
     const LIMIT = 10000
     if (resultText.length > LIMIT) {
       resultText = resultText.substring(0, LIMIT) + "\n...(内容过长，已截断)"
     }
-
     const formatNote = contentType.includes("pdf") ? "已提取纯文本" : "已转为Markdown格式"
     return `${resultPrefix}\n响应内容(${formatNote}):\n${resultText}`
-
   } catch (error: any) {
     return `❌ 网络请求失败: ${error.message}`
   }

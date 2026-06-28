@@ -1,4 +1,3 @@
-// tools/history/index.ts
 import * as historyTools from './tools.js'
 
 export const history_toolHandlers: Record<string, (args: any) => Promise<string>> = {

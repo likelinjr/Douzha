@@ -11,19 +11,14 @@ import { weatherToolsDefinition } from './weather/definition.js'
 import { weather_toolHandlers } from './weather/index.js'
 import { httpToolsDefinition } from './httpRequest/definition.js'
 import { http_toolHandlers } from './httpRequest/index.js'
-import { musicToolsDefinition } from './music/definition.js'
-import { music_toolHandlers } from './music/index.js'
-import { videoToolsDefinition } from './video/definition.js'
-import { video_toolHandlers } from './video/index.js'
-import { locationToolsDefinition } from './location/definition.js'
-import { location_toolHandlers } from './location/index.js'
-import { session_toolHandlers } from './session/index.js'
 import { historyToolsDefinition } from './history/definition.js'
 import { history_toolHandlers } from './history/index.js'
 import { downloadToolsDefinition } from './download/definition.js'
 import { download_toolHandlers } from './download/index.js'
 import { extractToolsDefinition } from './extract/definition.js'
 import { extract_toolHandlers } from './extract/index.js'
+import { musicToolsDefinition } from './music/definition.js'
+import { music_toolHandlers } from './music/index.js'
 
 export const allToolsDefinition :ToolDefinition[] = [
   ...fileToolsDefinition,
@@ -32,12 +27,10 @@ export const allToolsDefinition :ToolDefinition[] = [
   ...commandToolsDefinition,
   ...weatherToolsDefinition,
   ...httpToolsDefinition,
-  ...musicToolsDefinition,
-  ...videoToolsDefinition,
-  ...locationToolsDefinition,
   ...historyToolsDefinition,
   ...downloadToolsDefinition,
-  ...extractToolsDefinition
+  ...extractToolsDefinition,
+  ...musicToolsDefinition
 ]
 
 export const toolHandlers: Record<string, (args: any) => Promise<string>> = {
@@ -47,11 +40,8 @@ export const toolHandlers: Record<string, (args: any) => Promise<string>> = {
   ...command_toolHandlers,
   ...weather_toolHandlers,
   ...http_toolHandlers,
-  ...music_toolHandlers,
-  ...video_toolHandlers,
-  ...location_toolHandlers,
-  ...session_toolHandlers,
   ...history_toolHandlers,
   ...download_toolHandlers,
-  ...extract_toolHandlers
+  ...extract_toolHandlers,
+  ...music_toolHandlers
 }

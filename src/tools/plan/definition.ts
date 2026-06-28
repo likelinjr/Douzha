@@ -9,7 +9,6 @@ export const planToolsDefinition: ToolDefinition[] = [
       parameters: {
         type: "object",
         properties: {
-          plan_id: { type: "number", description: "任务计划的 ID" },
           updates: {
             type: "array",
             description: "需要更新的步骤列表",
@@ -21,13 +20,13 @@ export const planToolsDefinition: ToolDefinition[] = [
                   type: "string", 
                   enum: ["todo", "doing", "done", "failed"] 
                 },
-                result: { type: "string", description: "该步骤执行后的结果简述（可选）" }
+                result: { type: "string", description: "该步骤执行后的结果简述" }
               },
               required: ["step_order", "status"]
             }
           }
         },
-        required: ["plan_id", "updates"]
+        required: ["updates"]
       }
     }
   }

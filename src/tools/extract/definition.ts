@@ -11,7 +11,7 @@ export const extractToolsDefinition: ToolDefinition[] = [
         properties: {
           filepath: {
             type: "string",
-            description: "要解压的压缩文件完整路径，例如 './downloads/archive.zip' 或 'C:/files/data.tar.gz'。"
+            description: "要解压的压缩文件完整路径，例如 './Downloads/archive.zip' "
           },
           outputDir: {
             type: "string",

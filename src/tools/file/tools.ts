@@ -1,10 +1,10 @@
 import fs from 'fs/promises'
-import { validatePath } from '../../utils/security.js'
+import { validatePath, checkWritePermission } from '../../utils/security.js'
 import path from 'path'
 
-export async function readFile(path: string): Promise<string> {
+export async function readFile(filePath: string): Promise<string> {
   try {
-    const safePath = validatePath(path)
+    const safePath = validatePath(filePath)
     const content = await fs.readFile(safePath, 'utf-8')
     return content
   } catch (error: any) {
@@ -15,6 +15,9 @@ export async function readFile(path: string): Promise<string> {
 export async function writeFile(filePath: string, content: string): Promise<string> {
   try {
     const safePath = validatePath(filePath)
+    if (!checkWritePermission(safePath)) {
+      return `❌ 权限不足：只能在 DeskTop 目录中进行写入操作`
+    }
     const dir = path.dirname(safePath)
     await fs.mkdir(dir, { recursive: true })
     await fs.writeFile(safePath, content, 'utf-8')
@@ -37,6 +40,9 @@ export async function listFiles(dirPath: string = "."): Promise<string> {
 export async function deleteFile(filePath: string): Promise<string> {
   try {
     const safePath = validatePath(filePath)
+    if (!checkWritePermission(safePath)) {
+      return `❌ 权限不足：只能在 DeskTop 目录中进行删除操作`
+    }
     await fs.unlink(safePath)
     return `✅ 成功删除文件: ${filePath}`
   } catch (error: any) {
@@ -48,6 +54,9 @@ export async function copyFile(source: string, destination: string): Promise<str
   try {
     const safeSource = validatePath(source)
     const safeDest = validatePath(destination)
+    if (!checkWritePermission(safeDest)) {
+      return `❌ 权限不足：只能将文件复制到 DeskTop 目录中`
+    }
     await fs.copyFile(safeSource, safeDest)
     return `✅ 成功从 [${source}] 复制到 [${destination}]`
   } catch (error: any) {
@@ -58,11 +67,12 @@ export async function copyFile(source: string, destination: string): Promise<str
 export async function editFile(filePath: string, oldText: string, newText: string): Promise<string> {
   try {
     const safePath = validatePath(filePath) 
+    if (!checkWritePermission(safePath)) {
+      return `❌ 权限不足：只能在 DeskTop 目录中进行编辑操作`
+    }
     const content = await fs.readFile(safePath, 'utf-8')
-
     const parts = content.split(oldText)
     const count = parts.length - 1
-
     if (count === 0) {
       return `❌ 替换失败：在文件中没找到这段内容。请检查文字、空格或缩进是否完全一致。`
     }
@@ -80,25 +90,20 @@ export async function editFile(filePath: string, oldText: string, newText: strin
 async function buildTree(dirPath: string, prefix: string = "", isLast: boolean = true): Promise<string> {
   const safePath = validatePath(dirPath)
   const entries = await fs.readdir(safePath, { withFileTypes: true })
-  
   let result = ""
   const connector = isLast ? "└── " : "├── "
   const extension = isLast ? "    " : "│   "
-  
   for (let i = 0; i < entries.length; i++) {
     const entry = entries[i]
     const isLastEntry = i === entries.length - 1
     const entryPrefix = prefix + connector
     const childPrefix = prefix + extension
-    
     result += `${entryPrefix}${entry.name}\n`
-    
     if (entry.isDirectory()) {
       const subDirPath = path.join(safePath, entry.name)
       result += await buildTree(subDirPath, childPrefix, isLastEntry)
     }
   }
-  
   return result
 }
 
@@ -106,13 +111,11 @@ export async function getDirectoryTree(dirPath: string = "."): Promise<string> {
   try {
     const safePath = validatePath(dirPath)
     const stats = await fs.stat(safePath)
-    
     if (!stats.isDirectory()) {
       return `❌ 路径不是目录: ${dirPath}`
     }
-    
     const tree = await buildTree(safePath)
-    return `📁 目录 [${dirPath}] 的文件结构树:\n${tree || "(空目录)"}`
+    return `📁 目录 [${dirPath}] 的文件结构树:\n${(tree || "空目录").trimEnd()}`
   } catch (error: any) {
     return `❌ 获取目录结构失败: ${error.message}`
   }

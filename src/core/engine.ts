@@ -1,30 +1,33 @@
-import { think } from '../brain/index.js'
-import { Message, AIResponse } from '../types/index.js'
+import { think } from '../brain/models/index.js'
+import { Message, AIResponse } from '../types/message.js'
 import { allToolsDefinition, toolHandlers } from '../tools/index.js'
 import { getTaskPlan } from '../tools/plan/tools.js'
 import { getSystemPrompt } from '../brain/prompt.js'
 import { runDecision } from '../brain/decisionMaker.js'
-import { loadMemory, getRecentContext, saveMemory } from '../utils/memory.js'
+import { loadMemory, getRecentContext, getLatestFullContext, saveMemory } from '../utils/memory.js'
 import { toolLog, commonLog, DEBUG } from '../utils/debug.js'
+import { ADVANCED_MODEL, BASE_MODEL } from '../brain/models/modelConfig.js'
 
-export async function run(userMessage: string, options?: { onContent?: (text: string) => void; onThinking?: (text: string) => void }) {
-
+export async function run(
+  userMessage: string, 
+  options?: { onContent?: (text: string) => void; onThinking?: (text: string) => void }
+) {
   const memory = await loadMemory()
-  const memoryString = `[系统内部参考 - 历史会话索引（仅供你理解上下文使用，切勿向用户展示ID或原样输出）]\n` + memory
-  const recentContext = await getRecentContext()
+  const { intent, level, plan_id, session_id, remark } = await runDecision(userMessage)
 
-  const { level, plan_id, session_id } = await runDecision(userMessage)
-
-  const selectedModel = level === 'advanced' 
-    ? (process.env.ADVANCED_MODEL || 'deepseek') 
-    : (process.env.BASE_MODEL || 'gemini')
-
-  const sessionMessages: Message[] = [{ role: 'user', content: userMessage }]
+  const recentContext = intent === 'continue' && session_id 
+    ? await getLatestFullContext() 
+    : await getRecentContext()
+  const modelConfig = level === 'advanced' 
+    ? ADVANCED_MODEL 
+    : BASE_MODEL
+  const messages: Message[] = [{ role: 'user', content: userMessage }]
 
   await saveMemory({
     session_id: Number(session_id),
     role: 'user',
     content: userMessage,
+    reasoning_content: null,
     tool_calls: null,
     tool_call_id: null
   })
@@ -36,25 +39,26 @@ export async function run(userMessage: string, options?: { onContent?: (text: st
 
   while (isRunning && step <= MAX_STEPS) {
 
-    commonLog(`\n第 ${step} 轮思考\n`)
+    commonLog(`\n第 ${step} 次请求\n`)
 
     const planInfo = await getTaskPlan({ planId: Number(plan_id), sessionId: Number(session_id) })
-    const dynamicSystemPrompt = `${getSystemPrompt()}\n\n${memoryString}\n\n${recentContext}\n\n${planInfo}`
+    const remarkSection = remark ? `\n# 备注\n${remark}` : ''
+    const dynamicSystemPrompt = `${getSystemPrompt()}\n\n${memory}\n\n${recentContext}\n\n${planInfo}${remarkSection}`
     const response: AIResponse = await think(
-      sessionMessages,
+      modelConfig,
+      messages,
       allToolsDefinition, 
       dynamicSystemPrompt,
-      selectedModel,
-      false,
       options
     ) 
 
     if (response.raw) {
-      sessionMessages.push(response.raw),
+      messages.push(response.raw),
       await saveMemory({
         session_id: Number(session_id),
         role: response.raw.role,
         content: response.raw.content,
+        reasoning_content: response.raw.reasoning_content || null,
         tool_calls: response.raw.tool_calls ? JSON.stringify(response.raw.tool_calls) : null,
         tool_call_id: null
       })
@@ -70,6 +74,9 @@ export async function run(userMessage: string, options?: { onContent?: (text: st
         try {
           const handler = toolHandlers[name]
           if (handler) {
+            if (name === 'update_task_plan' && plan_id) {
+              args.plan_id = Number(plan_id)
+            }
             toolResult = await handler(args)
           } else {
             toolResult = `❌ 未知工具: ${name}`
@@ -80,15 +87,17 @@ export async function run(userMessage: string, options?: { onContent?: (text: st
 
         toolLog(`工具反馈: ${toolResult.substring(0, 100)}${toolResult.length > 100 ? '...' : ''}`)
 
-        sessionMessages.push({ 
+        messages.push({ 
           role: 'tool', 
           tool_call_id: id,
           content: toolResult
         })
+
         await saveMemory({
           session_id: Number(session_id),
           role: 'tool',
           content: toolResult,
+          reasoning_content: null,
           tool_calls: null,
           tool_call_id: id
         })
@@ -106,7 +115,7 @@ export async function run(userMessage: string, options?: { onContent?: (text: st
   }
 
   if (step > MAX_STEPS && isRunning) {
-    console.warn("\n\n⚠️ 达到最大步数限制，任务强制中止。")
+    console.warn("\n⚠️ 达到最大步数限制，任务强制中止。")
   }
 
   return finalAnswer

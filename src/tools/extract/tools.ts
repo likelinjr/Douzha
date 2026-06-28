@@ -33,20 +33,16 @@ async function listDir(dir: string, base: string = dir): Promise<string[]> {
 export async function extractFile(filepath: string, outputDir?: string): Promise<string> {
   try {
     const resolvedPath = validatePath(filepath)
-
     if (!fsSync.existsSync(resolvedPath)) {
       return `❌ 文件不存在: ${resolvedPath}`
     }
-
     const stat = await fs.stat(resolvedPath)
     if (!stat.isFile()) {
       return `❌ 路径不是文件: ${resolvedPath}`
     }
-
     const ext = path.extname(resolvedPath).toLowerCase()
     const basename = path.basename(resolvedPath)
     const nameWithoutExt = path.parse(basename).name
-
     if (!outputDir) {
       outputDir = path.join(SANDBOX_DIR, nameWithoutExt + '_extracted')
     } else {
@@ -55,10 +51,8 @@ export async function extractFile(filepath: string, outputDir?: string): Promise
         outputDir = path.join(SANDBOX_DIR, path.basename(outputDir))
       }
     }
-
     await fs.mkdir(SANDBOX_DIR, { recursive: true })
     await fs.mkdir(outputDir, { recursive: true })
-
     if (ext === '.zip') {
       const zip = new AdmZip(resolvedPath)
       zip.extractAllTo(outputDir, true)
@@ -78,11 +72,9 @@ export async function extractFile(filepath: string, outputDir?: string): Promise
     } else {
       return `❌ 不支持的压缩格式: ${ext}（支持 .zip、.tar、.tar.gz、.tgz、.gz）`
     }
-
     const files = await listDir(outputDir)
     const totalFiles = files.filter(f => f.startsWith('📄')).length
     const totalDirs = files.filter(f => f.startsWith('📁')).length
-
     return (
       `✅ 解压成功\n` +
       `📦 源文件: ${resolvedPath}\n` +

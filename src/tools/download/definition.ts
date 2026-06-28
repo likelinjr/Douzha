@@ -5,13 +5,13 @@ export const downloadToolsDefinition: ToolDefinition[] = [
     type: "function",
     function: {
       name: "download_file",
-      description: "从指定 URL 下载文件并保存到本地。支持任意文件类型（图片、视频、音频、压缩包、文档等）。下载完成后返回文件保存路径和大小信息。",
+      description: "从指定 URL 下载文件并保存到本地，下载完成后返回文件保存路径和大小信息。",
       parameters: {
         type: "object",
         properties: {
           url: {
             type: "string",
-            description: "要下载的文件完整 URL，例如 'https://example.com/image.png' 或 'https://example.com/file.zip'。"
+            description: "要下载的文件完整 URL，例如'https://example.com/file.zip'。"
           },
           filename: {
             type: "string",
