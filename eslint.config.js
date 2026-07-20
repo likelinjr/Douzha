@@ -17,7 +17,9 @@ export default [
       "no-console": "off",
       "@typescript-eslint/no-explicit-any": "off",
       "semi": ["error", "never"],
-      "@typescript-eslint/no-unused-vars": ["warn", { "argsIgnorePattern": "^_" }],
+      "@typescript-eslint/no-unused-vars": ["warn", { 
+        "varsIgnorePattern": "^_",
+        "argsIgnorePattern": "^_" }],
       "indent": ["error", 2, { "SwitchCase": 1 }]
     },
   },

@@ -26,6 +26,7 @@ export const COLORS = {
   SEAFOAM: hexToAnsi('#96b5a8'),        // 海泡绿
   SAND: hexToAnsi('#d4c4a8'),           // 沙色
   PLUM: hexToAnsi('#b58da3'),           // 李子紫
+  APPLE_RED: hexToAnsi('#f15642')       // 苹果红
 }
 
 export const REASONING_COLOR = COLORS.ASTRAL_BLUE

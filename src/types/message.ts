@@ -1,11 +1,4 @@
-export interface ToolCall {
-    id: string
-    type: 'function'
-    function: {
-        name: string
-        arguments: string
-    }
-}
+import { ToolCall } from './tool.js'
 
 export type Role = 'user' | 'assistant' | 'tool'
 
@@ -28,16 +21,3 @@ export interface ToolMessage {
 }
 
 export type Message = UserMessage | AssistantMessage | ToolMessage
-
-export interface ToolAction {
-    id: string;
-    name: string
-    arguments: any
-}
-
-export interface AIResponse {
-    actions?: ToolAction[]
-    answer?: string | null
-    raw?: AssistantMessage
-}
-

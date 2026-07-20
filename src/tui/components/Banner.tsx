@@ -30,7 +30,7 @@ export function Banner({ onDone }: Props) {
   }, [])
 
   return (
-    <Box flexDirection="column" marginBottom={1}>
+    <Box flexDirection="column">
       {lines.map((line, i) => (
         <Text key={i}>{line}</Text>
       ))}

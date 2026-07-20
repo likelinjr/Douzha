@@ -1,27 +1,29 @@
 import { think } from '../brain/models/index.js'
-import { Message, AIResponse } from '../types/message.js'
+import { Message } from '../types/message.js'
+import { ToolCall,ToolResult } from '../types/tool.js'
 import { allToolsDefinition, toolHandlers } from '../tools/index.js'
 import { getTaskPlan } from '../tools/plan/tools.js'
 import { getSystemPrompt } from '../brain/prompt.js'
 import { runDecision } from '../brain/decisionMaker.js'
 import { loadMemory, getRecentContext, getLatestFullContext, saveMemory } from '../utils/memory.js'
-import { toolLog, commonLog, DEBUG } from '../utils/debug.js'
-import { ADVANCED_MODEL, BASE_MODEL } from '../brain/models/modelConfig.js'
+import { toolLog, commonLog, warnLog, errorLog, model_content, model_reasoning } from '../utils/debug.js'
+import { ADVANCED_MODEL, BASE_MODEL } from '../brain/models/config.js'
+import { eventType } from '../types/events.js'
 
-export async function run(
-  userMessage: string, 
-  options?: { onContent?: (text: string) => void; onThinking?: (text: string) => void }
-) {
+export async function* run(
+  userMessage: string,
+): AsyncIterableIterator<eventType> {
   const memory = await loadMemory()
-  const { intent, level, plan_id, session_id, remark } = await runDecision(userMessage)
-
-  const recentContext = intent === 'continue' && session_id 
-    ? await getLatestFullContext() 
-    : await getRecentContext()
-  const modelConfig = level === 'advanced' 
-    ? ADVANCED_MODEL 
-    : BASE_MODEL
   const messages: Message[] = [{ role: 'user', content: userMessage }]
+  const systemPrompt = getSystemPrompt()
+  const { intent, level, plan_id, session_id, remark } = await runDecision(userMessage)
+  const recentContext = intent === 'continue'
+    ? await getLatestFullContext()
+    : await getRecentContext()
+  const modelConfig = ( level === 'advanced'
+    ? ADVANCED_MODEL
+    : BASE_MODEL )
+  const remarkSection = remark ? `\n# 备注\n${remark}` : ''
 
   await saveMemory({
     session_id: Number(session_id),
@@ -34,43 +36,94 @@ export async function run(
 
   let isRunning = true
   let step = 1
-  let finalAnswer = ''
-  const MAX_STEPS = 300
+  const MAX_STEPS = 50
 
   while (isRunning && step <= MAX_STEPS) {
-
-    commonLog(`\n第 ${step} 次请求\n`)
-
+    commonLog(`\n\n第 ${step} 次请求\n\n`)
     const planInfo = await getTaskPlan({ planId: Number(plan_id), sessionId: Number(session_id) })
-    const remarkSection = remark ? `\n# 备注\n${remark}` : ''
-    const dynamicSystemPrompt = `${getSystemPrompt()}\n\n${memory}\n\n${recentContext}\n\n${planInfo}${remarkSection}`
-    const response: AIResponse = await think(
+    const dynamicSystemPrompt = `${systemPrompt}\n\n${memory}\n\n${recentContext}\n\n${planInfo}${remarkSection}`
+
+    // 迭代模型返回的事件流
+    const eventStream = think(
       modelConfig,
       messages,
-      allToolsDefinition, 
-      dynamicSystemPrompt,
-      options
-    ) 
+      allToolsDefinition,
+      dynamicSystemPrompt
+    )
 
-    if (response.raw) {
-      messages.push(response.raw),
-      await saveMemory({
-        session_id: Number(session_id),
-        role: response.raw.role,
-        content: response.raw.content,
-        reasoning_content: response.raw.reasoning_content || null,
-        tool_calls: response.raw.tool_calls ? JSON.stringify(response.raw.tool_calls) : null,
-        tool_call_id: null
-      })
+    let fullContent = ''
+    let fullReasioningContent = '' 
+    let toolCalls: ToolCall[] = []
+    let isThinking = false
+
+    for await (const event of eventStream) {
+      if (event.type === 'thinking') {
+        isThinking = true
+        model_reasoning(event.chunk)
+        fullReasioningContent += event.chunk
+        yield event
+      } else if (event.type === 'content') {
+        isThinking && ( commonLog("\n\n"), isThinking = false )
+        model_content(event.chunk)
+        fullContent += event.chunk
+        yield event
+      } else if (event.type === 'tool_call_delta') {
+        yield event
+      } else if (event.type === 'tool_calls') {
+        toolCalls = event.calls
+        yield event
+      } else if (event.type === 'error') {
+        yield event
+        errorLog(`\n\n${ event.message }`)
+        isRunning = false
+        break
+      } else if (event.type === 'warn') {
+        yield event
+        warnLog(`\n\n${ event.message }`)
+        isRunning = false
+        break
+      } else if(event.type === 'usage') {
+        commonLog(`\n\n${event.metrics}`)
+        // yield event
+      } else if (event.type === 'done') {
+        break
+      }
     }
 
-    if (response.actions && response.actions.length > 0) {
-      commonLog(`\n收到 ${response.actions.length} 个并行工具调用`)
-      for (const action of response.actions) {
-        const { name, arguments: args, id } = action
-        toolLog(`\n执行工具: ${name}\n`)
+    messages.push({
+      role: 'assistant',
+      content: fullContent,
+      reasoning_content: fullReasioningContent,
+      tool_calls: toolCalls.length > 0 ? toolCalls : undefined,
+    })
 
-        let toolResult = ""
+    await saveMemory({
+      session_id: Number(session_id),
+      role: 'assistant',
+      content: fullContent,
+      reasoning_content: fullReasioningContent,
+      tool_calls: toolCalls ? JSON.stringify(toolCalls) : null,
+      tool_call_id: null
+    })
+
+    if (toolCalls && toolCalls.length > 0) {
+      toolLog(`\n\n📋 ${modelConfig.modelName} 返回 ${toolCalls.length} 个工具调用`)
+      
+      for (let i = 0; i < toolCalls.length; i++) {
+        const toolCall = toolCalls[i]
+        const { id, function: { name, arguments: argsStr } } = toolCall
+        const args = JSON.parse(argsStr)
+
+        const formatValue = (v: unknown): string => {
+          const s = typeof v === 'object' ? JSON.stringify(v) : typeof v === 'string' ? `"${v}"` : String(v)
+          return s.length > 100 ? s.slice(0, 100) + '...' : s
+        }
+        const formattedArgs = Object.entries(args).map(([k, v]) => `${k}=${formatValue(v)}`).join(', ')
+
+        toolLog(`\n\n执行工具: ${name}(${formattedArgs})`)
+        
+        let toolResult: ToolResult | null = null
+
         try {
           const handler = toolHandlers[name]
           if (handler) {
@@ -78,45 +131,56 @@ export async function run(
               args.plan_id = Number(plan_id)
             }
             toolResult = await handler(args)
+            toolLog(`\n\n工具反馈: ${ JSON.stringify(toolResult) }`)
           } else {
-            toolResult = `❌ 未知工具: ${name}`
+            toolResult = {
+              content: [{ type: "text", text: `❌ 未知工具: ${name}` }],
+              isError: true
+            }
+            toolLog(`\n\n工具反馈: ${ JSON.stringify(toolResult) }`)
           }
-        } catch (e: any) {
-          toolResult = `❌ 执行失败: ${e.message}`
+        } catch (error: unknown) {
+          const message = error instanceof Error ? error.message : String(error)
+          toolResult = {
+            content: [{ type: "text", text: `❌ 执行失败: ${message}` }],
+            isError: true
+          }
+          toolLog(`\n\n工具反馈: ${ JSON.stringify(toolResult)}`)
         }
 
-        toolLog(`工具反馈: ${toolResult.substring(0, 100)}${toolResult.length > 100 ? '...' : ''}`)
+        // 发送工具结果事件
+        yield { type: 'tool_result', name, index: i, result: toolResult }
 
-        messages.push({ 
-          role: 'tool', 
+        messages.push({
+          role: 'tool',
           tool_call_id: id,
-          content: toolResult
+          content: JSON.stringify(toolResult.content)
         })
-
         await saveMemory({
           session_id: Number(session_id),
           role: 'tool',
-          content: toolResult,
+          content: JSON.stringify(toolResult),
           reasoning_content: null,
           tool_calls: null,
           tool_call_id: id
         })
       }
-
     } else {
-      
-      commonLog(`\n\n✅ 任务完成！\n`)
-      !DEBUG && console.log('\n')
-
-      finalAnswer = response.answer || ''
+      commonLog(`\n\n✅ 对话结束！\n\n`)
       isRunning = false
     }
     step++
   }
 
   if (step > MAX_STEPS && isRunning) {
-    console.warn("\n⚠️ 达到最大步数限制，任务强制中止。")
+    warnLog("\n\n⚠️ 达到最大步数限制，任务强制中止 \n\n")
+    yield { type: 'warn', message: "⚠️ 达到最大步数限制，任务强制中止" }
   }
 
-  return finalAnswer
+  yield { type: 'done' }
+}
+
+ 
+export async function runSimple(userMessage: string): Promise<void> {
+  for await (const _ of run(userMessage)) {}
 }

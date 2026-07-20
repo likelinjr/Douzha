@@ -1,11 +1,13 @@
 import { SessionRow, MessageRow  } from '../types/historyMsg.js'
 import { Session, Message } from '../database/historyMsg_dbTools.js'
+import { wrapByRole } from '../labels/index.js'
+import { normalizeNewlines } from './stringUtils.js'
 
 function truncateContent(content: string, maxLength: number): string {
   if (content.length <= maxLength) return content
   const halfLength = Math.floor(maxLength / 2)
   return content.slice(0, halfLength) + 
-         `\n...[省略 ${content.length - maxLength} 字符]...` + 
+         `\n...[省略 ${content.length - maxLength} 字符]...\n` + 
          content.slice(-halfLength)
 }
 
@@ -35,9 +37,13 @@ function buildSmartContext(
           let argsStr = ''
           try {
             const argsObj = JSON.parse(tc.function?.arguments || '{}')
+            const maxArgLength = 100
             const formattedValues = Object.values(argsObj).map((v: any) => {
-              if (typeof v === 'string') return `"${v}"`
-              return String(v)
+              let str: string
+              if (typeof v === 'string') str = `"${v}"`
+              else if (typeof v === 'object') str = JSON.stringify(v)
+              else str = String(v)
+              return str.length > maxArgLength ? truncateContent(str, maxArgLength) : str
             })
             argsStr = formattedValues.join(', ')
           } catch {
@@ -60,12 +66,12 @@ function buildSmartContext(
       }
     }
     if (!displayContent) continue
-    const entry = `${msg.role}: ${displayContent}\n`
-    if (maxLength && currentLength + entry.length > maxLength && selected.length > 0) break
-    selected.unshift({ role: msg.role, content: displayContent })
-    currentLength += entry.length
+    const finalContent = normalizeNewlines(wrapByRole[msg.role](displayContent))
+    if (maxLength && currentLength + finalContent.length > maxLength && selected.length > 0) break
+    selected.unshift({ role: msg.role, content: finalContent })
+    currentLength += finalContent.length
   }
-  return selected.map(m => `${m.role}: ${m.content}`).join('\n')
+  return (selected.map(m => `${m.content}`).join('\n')).trim()
 }
 
 export async function saveMemory(message: MessageRow): Promise<number> {
@@ -83,12 +89,12 @@ export async function saveMemory(message: MessageRow): Promise<number> {
 // 加载所有会话标题和消息数
 export async function loadMemory(): Promise<string> {
   const memory = Session.getAll()
-  if(memory.length === 0) return "暂无历史记录"
+  if(memory.length === 0) return "暂无历史对话"
   const memoryString = memory.map(s => {
     const msgCount = Message.getBySessionId(s.id, Number.MAX_SAFE_INTEGER).length
-    return `会话ID:${s.id} | 标题:${s.summary} | 消息数:${msgCount}`
+    return `- 会话ID [${s.id}] | 标题:${s.summary} | 消息数:${msgCount}`
   }).join('\n')
-  return `[历史会话索引，仅供你理解上下文使用，切勿向用户展示ID或原样输出]\n${memoryString}`
+  return (`# 历史记录摘要\n[历史对话索引，理解上下文使用，切勿向用户展示ID或原样输出]\n${memoryString}`).trim()
 }
 
 export async function clearMemory() {
@@ -108,17 +114,17 @@ export async function getRecentContext(): Promise<string> {
       : [50, 1000, 20]
     const messages: MessageRow[] = Message.getBySessionId(session.id, 20)
     const contextContent = buildSmartContext(messages, maxSingleMsgLength, maxLength, maxMessages)
-    parts.push(`会话ID: ${session.id}, 标题: ${session.summary || '' } \n对话内容:\n${contextContent}\n`)
+    parts.push(`- 会话ID: ${session.id}, 标题: ${session.summary || '' } \n- 对话内容:\n${contextContent}\n`)
   }
-  return parts.join('\n\n')
+  return ('# 最近三次对话细节' + '\n' + parts.join('\n\n')).trim()
 }
 
-export async function getLatestSessionId(): Promise< number | null> {
+export async function getLatestSession(): Promise<SessionRow | null> {
   const sessions: SessionRow[] = await Session.getAll()
   if (sessions.length === 0) {
     return null
   }
-  return sessions[0].id
+  return sessions[0]
 }
 
 async function getFullContext(sessionId: number): Promise<string> {
@@ -128,14 +134,16 @@ async function getFullContext(sessionId: number): Promise<string> {
   }
   const messages: MessageRow[] = Message.getBySessionId(sessionId, Number.MAX_SAFE_INTEGER)
   if (messages.length === 0) {
-    return `会话ID: ${sessionId} | 标题: ${session.summary || '' }\n暂无消息记录`
+    return `- 会话ID: ${sessionId} | 标题: ${session.summary || '' }\n暂无消息记录`
   }
-  const contextContent = buildSmartContext(messages, 100)
-  return `会话ID: ${session.id} | 标题: ${session.summary || '' } \n${contextContent}`
+  const contextContent = buildSmartContext(messages, 50, 5000, 100)
+  return `- 会话ID: ${session.id} | 标题: ${session.summary || '' }\n${contextContent}`.trim()
 }
 
 export async function getLatestFullContext(): Promise<string> {
-  const sessionId = await getLatestSessionId()
-  if (sessionId === null) return "当前无活跃会话"
-  return getFullContext(sessionId)
+  const session = await getLatestSession()
+  if (!session) return "当前无活跃会话"
+  return getFullContext(session.id)
 }
+
+// console.log( await loadMemory() )

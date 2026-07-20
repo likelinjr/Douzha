@@ -1,6 +1,7 @@
 export interface ModelConfig {
     baseURL: string
     apiKey: string
-    serviceProvider: string
+    protocol: "OpenAI" | "Google" | "Anthropic",
+    serviceProvider?: string
     modelName: string
 }

@@ -1,0 +1,7 @@
+export const SYSTEM_MESSAGE_TAG = 'system-reminder'
+export const USER_MESSAGE_TAG = 'user-message'
+export const ASSISTANT_MESSAGE_TAG = 'assistant-message'
+export const BASH_MESSAGE_TAG = 'bash'
+export const HISTORY_MESSAGE_TAG = 'history-message'
+export const TOOL_MESSAGE_TAG = 'tool-result'
+export const SKILL_TAG = 'skill-content'

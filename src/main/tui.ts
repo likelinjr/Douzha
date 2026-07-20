@@ -1,6 +1,6 @@
 import React from 'react'
 import { render } from 'ink'
-import { App } from '../interface/App.js'
+import { App } from '../tui/App.js'
 import './initiate.js'
 
 const { unmount } = render(React.createElement(App))

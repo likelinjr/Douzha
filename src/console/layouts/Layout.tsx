@@ -44,7 +44,7 @@ export const ConsoleLayout: React.FC = () => {
         collapsed={isCollapsed}
         onCollapse={setIsCollapsed}
         trigger={null}
-        width={200}
+        width={130}
         theme="dark"
         className={styles.sider}
       >
@@ -65,6 +65,7 @@ export const ConsoleLayout: React.FC = () => {
       <Layout>
         <Header className={styles.header}>
           <Breadcrumb
+            style={{ fontSize: '17px' }}
             items={[
               { title: 'Console' },
               { title: menuItems.find(item => item.key === location.pathname)?.label || 'Home' },

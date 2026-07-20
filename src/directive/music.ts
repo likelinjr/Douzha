@@ -2,8 +2,6 @@ import { Directive, DirectiveContext } from '../types/directive.js'
 import {
   playSong,
   playFolder,
-  loopSong,
-  loopFolder,
   stopMusic,
 } from '../tools/music/tools.js'
 import fs from 'fs'
@@ -76,7 +74,7 @@ async function execute(context: DirectiveContext): Promise<void> {
         console.log(`❌ 未找到文件: ${name}`)
         return
       }
-      const result = hasLoop ? await loopSong(filePath) : await playSong(filePath)
+      const result = await playSong(filePath, hasLoop)
       console.log(result)
       break
     }
@@ -87,7 +85,7 @@ async function execute(context: DirectiveContext): Promise<void> {
         console.log(`❌ 未找到文件夹: ${name}`)
         return
       }
-      const result = hasLoop ? await loopFolder(dirPath) : await playFolder(dirPath)
+      const result = await playFolder(dirPath, hasLoop)
       console.log(result)
       break
     }

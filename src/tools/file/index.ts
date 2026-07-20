@@ -1,6 +1,7 @@
 import * as fileTools from './tools.js'
+import { ToolHandlers } from '../../types/tool.js'
 
-export const file_toolHandlers: Record<string, (args: any) => Promise<string>> = {
+export const file_toolHandlers: ToolHandlers = {
   'read_file':   (args) => fileTools.readFile(args.path),
   'write_file':  (args) => fileTools.writeFile(args.path, args.content),
   'list_files':  (args) => fileTools.listFiles(args.path || "."),
@@ -8,4 +9,5 @@ export const file_toolHandlers: Record<string, (args: any) => Promise<string>> =
   'copy_file':   (args) => fileTools.copyFile(args.source, args.destination),
   'edit_file':   (args) => fileTools.editFile(args.path, args.old_text, args.new_text),
   'get_directory_tree': (args) => fileTools.getDirectoryTree(args.path || "."),
+  'extract_file': (args) => fileTools.extractFile(args.filepath,args.outputDir)
 }

@@ -15,12 +15,17 @@ import { historyToolsDefinition } from './history/definition.js'
 import { history_toolHandlers } from './history/index.js'
 import { downloadToolsDefinition } from './download/definition.js'
 import { download_toolHandlers } from './download/index.js'
-import { extractToolsDefinition } from './extract/definition.js'
-import { extract_toolHandlers } from './extract/index.js'
 import { musicToolsDefinition } from './music/definition.js'
 import { music_toolHandlers } from './music/index.js'
+import { timeToolsDefinition } from './time/definition.js'
+import { time_toolHandlers } from './time/index.js'
+import { skillToolDefinition } from './skill/definition.js'
+import { skillToolHandler } from './skill/index.js'
+// import { imageToolsDefinition } from './image/definition.js'
+// import { image_toolHandlers } from './image/index.js'
+import { ToolHandlers } from '../types/tool.js'
 
-export const allToolsDefinition :ToolDefinition[] = [
+export const allToolsDefinition: ToolDefinition[] = [
   ...fileToolsDefinition,
   ...planToolsDefinition,
   ...webSearchToolsDefinition,
@@ -29,11 +34,13 @@ export const allToolsDefinition :ToolDefinition[] = [
   ...httpToolsDefinition,
   ...historyToolsDefinition,
   ...downloadToolsDefinition,
-  ...extractToolsDefinition,
-  ...musicToolsDefinition
+  ...musicToolsDefinition,
+  ...timeToolsDefinition,
+  ...skillToolDefinition,
+  // ...imageToolsDefinition
 ]
 
-export const toolHandlers: Record<string, (args: any) => Promise<string>> = {
+export const toolHandlers: ToolHandlers = {
   ...file_toolHandlers,
   ...plan_toolHandlers,
   ...webSearch_toolHandlers,
@@ -42,6 +49,8 @@ export const toolHandlers: Record<string, (args: any) => Promise<string>> = {
   ...http_toolHandlers,
   ...history_toolHandlers,
   ...download_toolHandlers,
-  ...extract_toolHandlers,
-  ...music_toolHandlers
+  ...music_toolHandlers,
+  ...time_toolHandlers,
+  ...skillToolHandler,
+  // ...image_toolHandlers
 }

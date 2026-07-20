@@ -2,8 +2,8 @@ import { exec } from 'child_process'
 import { promisify } from 'util'
 import path from 'path'
 import fs from 'fs'
-import { validatePath } from '../../utils/security.js'
-
+import { validatePath, sanitizePaths } from '../../utils/security.js'
+import { ToolResult } from '../../types/tool.js'
 const execAsync = promisify(exec)
 
 const AUDIO_EXTENSIONS = new Set([
@@ -25,116 +25,91 @@ function getAudioFilesInDir(dirPath: string): string[] {
   }
 }
 
-export async function playSong(filePath: string): Promise<string> {
+export async function playSong(filePath: string, loop?: boolean): Promise<ToolResult> {
   try {
     const resolved = validatePath(filePath)
     if (!fs.existsSync(resolved)) {
-      return `❌ 文件不存在: ${filePath}`
+      return {
+        content: [{ type: "text", text: sanitizePaths(`文件不存在: ${filePath}`) }],
+        isError: true
+      }
     }
     if (!isAudioFile(resolved)) {
-      return `❌ 不是支持的音频文件: ${path.extname(resolved)}`
+      return {
+        content: [{ type: "text", text: sanitizePaths(`不是支持的音频文件: ${path.extname(resolved)}`) }],
+        isError: true
+      }
     }
     try { await execAsync('taskkill /f /im mpv.exe') } catch {}
-    const command = `start /b mpv --no-video "${resolved}"`
+    const loopFlag = loop ? '--loop=inf' : ''
+    const command = `start /b mpv --no-video ${loopFlag} "${resolved}"`
     exec(command)
-    return `✅ 正在播放: ${path.basename(resolved)}`
-  } catch (error: any) {
-    return `❌ 播放失败: ${error.message}`
+    return {
+      content: [{ type: "text", text: `正在${loop ? "单曲循环":"播放"}: ${path.basename(resolved)}` }],
+      isError: false
+    }
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : String(error)
+    return {
+      content: [{ type: "text", text: sanitizePaths(`播放失败: ${message}`) }],
+      isError: true
+    }
   }
 }
 
-export async function playFolder(folderPath: string): Promise<string> {
+export async function playFolder(folderPath: string, loop?: boolean, shuffle?: boolean): Promise<ToolResult> {
   try {
     const resolved = validatePath(folderPath)
     if (!fs.existsSync(resolved)) {
-      return `❌ 文件夹不存在: ${folderPath}`
+      return {
+        content: [{ type: "text", text: sanitizePaths(`文件夹不存在: ${folderPath}`) }],
+        isError: true
+      }
     }
     const stat = fs.statSync(resolved)
     if (!stat.isDirectory()) {
-      return `❌ 路径不是文件夹: ${folderPath}`
+      return {
+        content: [{ type: "text", text: sanitizePaths(`路径不是文件夹: ${folderPath}`) }],
+        isError: true
+      }
     }
     const audioFiles = getAudioFilesInDir(resolved)
     if (audioFiles.length === 0) {
-      return `❌ 文件夹中没有音频文件: ${folderPath}`
+      return {
+        content: [{ type: "text", text: sanitizePaths(`文件夹中没有音频文件: ${folderPath}`) }],
+        isError: true
+      }
     }
     try { await execAsync('taskkill /f /im mpv.exe') } catch {}
-    const command = `start /b mpv --no-video "${resolved}"`
+    const shuffleFlag = shuffle ? '--shuffle' : ''
+    const loopFlag = loop ? '--loop-playlist=inf' : ''
+    const command = `start /b mpv --no-video ${shuffleFlag} ${loopFlag} "${resolved}"`
     exec(command)
-    return `✅ 正在播放文件夹: ${path.basename(resolved)} (共 ${audioFiles.length} 首音频)`
-  } catch (error: any) {
-    return `❌ 播放失败: ${error.message}`
+    const mode = shuffle ? '随机播放' : loop ? '列表循环' : '播放'
+    return {
+      content: [{ type: "text", text: `正在${mode}: ${path.basename(resolved)} (共 ${audioFiles.length} 首音频)` }],
+      isError: false
+    }
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : String(error)
+    return {
+      content: [{ type: "text", text: sanitizePaths(`播放失败: ${message}`) }],
+      isError: true
+    }
   }
 }
 
-export async function shufflePlay(folderPath: string): Promise<string> {
-  try {
-    const resolved = validatePath(folderPath)
-    if (!fs.existsSync(resolved)) {
-      return `❌ 文件夹不存在: ${folderPath}`
-    }
-    const stat = fs.statSync(resolved)
-    if (!stat.isDirectory()) {
-      return `❌ 路径不是文件夹: ${folderPath}`
-    }
-    const audioFiles = getAudioFilesInDir(resolved)
-    if (audioFiles.length === 0) {
-      return `❌ 文件夹中没有音频文件: ${folderPath}`
-    }
-    try { await execAsync('taskkill /f /im mpv.exe') } catch {}
-    const command = `start /b mpv --no-video --shuffle "${resolved}"`
-    exec(command)
-    return `✅ 正在随机播放: ${path.basename(resolved)} (共 ${audioFiles.length} 首音频)`
-  } catch (error: any) {
-    return `❌ 播放失败: ${error.message}`
-  }
-}
-
-export async function loopSong(filePath: string): Promise<string> {
-  try {
-    const resolved = validatePath(filePath)
-    if (!fs.existsSync(resolved)) {
-      return `❌ 文件不存在: ${filePath}`
-    }
-    if (!isAudioFile(resolved)) {
-      return `❌ 不是支持的音频文件: ${path.extname(resolved)}`
-    }
-    try { await execAsync('taskkill /f /im mpv.exe') } catch {}
-    const command = `start /b mpv --no-video --loop=inf "${resolved}"`
-    exec(command)
-    return `✅ 正在单曲循环: ${path.basename(resolved)}`
-  } catch (error: any) {
-    return `❌ 播放失败: ${error.message}`
-  }
-}
-
-export async function loopFolder(folderPath: string): Promise<string> {
-  try {
-    const resolved = validatePath(folderPath)
-    if (!fs.existsSync(resolved)) {
-      return `❌ 文件夹不存在: ${folderPath}`
-    }
-    const stat = fs.statSync(resolved)
-    if (!stat.isDirectory()) {
-      return `❌ 路径不是文件夹: ${folderPath}`
-    }
-    const audioFiles = getAudioFilesInDir(resolved)
-    if (audioFiles.length === 0) {
-      return `❌ 文件夹中没有音频文件: ${folderPath}`
-    }
-    try { await execAsync('taskkill /f /im mpv.exe') } catch {}
-    const command = `start /b mpv --no-video --loop-playlist=inf "${resolved}"`
-    exec(command)
-    return `✅ 正在列表循环: ${path.basename(resolved)} (共 ${audioFiles.length} 首音频)`
-  } catch (error: any) {
-    return `❌ 播放失败: ${error.message}`
-  }
-}
-
-export async function stopMusic(): Promise<string> {
+export async function stopMusic(): Promise<ToolResult> {
   try {
     await execAsync('taskkill /f /im mpv.exe')
-    return '✅ 音乐已停止。'
+    return {
+      content: [{ type: "text", text: '音乐已停止' }],
+      isError: false
+    }
   } catch {
-    return 'ℹ️ 当前没有正在播放的音乐。'
+    return {
+      content: [{ type: "text", text: 'ℹ️ 当前没有正在播放的音乐' }],
+      isError: false
+    }
   }
 }

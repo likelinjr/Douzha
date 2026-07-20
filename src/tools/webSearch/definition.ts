@@ -5,7 +5,7 @@ export const webSearchToolsDefinition :ToolDefinition[] = [
     type: "function",
     function: {
       name: "web_search",
-      description: "当你的本地知识无法回答问题，或者需要查询实时资讯（如最新技术文档等）时使用此工具。",
+      description: "当你的本地知识无法回答问题，或者需要查询实时资讯时使用此工具",
       parameters: {
         type: "object",
         properties: {

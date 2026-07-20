@@ -1,22 +1,32 @@
-import { DeepSeek} from './deepseek.js'
-import { Message, AIResponse } from '../../types/message.js'
-import { Gemini} from './gemini.js'
-import { BigModel} from './bigmodel.js'
+import { GoogleThink } from './google.js'
+import { OpenAIThink } from './openai.js'
+import { AnthropicThink } from './anthropic.js'
+import { Message } from '../../types/message.js'
 import { ToolDefinition } from '../../types/tool.js'
-import { Mimo } from './mimo.js'
 import { ModelConfig } from '../../types/modelConfig.js'
+import { initProxy } from "../../utils/proxy.js"
+import { eventType } from '../../types/events.js'
 
-export async function think(modelConfig: ModelConfig, messages: Message[], toolsDefinitions: ToolDefinition[], systemPrompt: string, options?: { onContent?: (text: string) => void; onThinking?: (text: string) => void }): Promise<AIResponse> {
-  switch (modelConfig.serviceProvider) {
-    case 'DeepSeek':
-      return await DeepSeek(modelConfig, messages, toolsDefinitions, systemPrompt, options)
-    case 'Gemini':
-      return await Gemini(modelConfig, messages, toolsDefinitions, systemPrompt, options)
-    case 'BigModel':
-      return await BigModel(modelConfig, messages, toolsDefinitions, systemPrompt, options)
-    case 'Mimo':
-      return await Mimo(modelConfig, messages, toolsDefinitions, systemPrompt, options)
+export async function* think(
+  modelConfig: ModelConfig,
+  messages: Message[],
+  toolsDefinitions: ToolDefinition[],
+  systemPrompt: string
+): AsyncIterableIterator<eventType> {
+  switch (modelConfig.protocol) {
+    case 'Google':
+      initProxy()
+      yield* GoogleThink(modelConfig, messages, toolsDefinitions, systemPrompt)
+      break
+    case 'Anthropic':
+      if (modelConfig.serviceProvider === 'Anthropic') initProxy()
+      yield* AnthropicThink(modelConfig, messages, toolsDefinitions, systemPrompt)
+      break
+    case 'OpenAI':
+      if (modelConfig.serviceProvider === 'OpenAI') initProxy()
+      yield* OpenAIThink(modelConfig, messages, toolsDefinitions, systemPrompt)
+      break
     default:
-      return await DeepSeek(modelConfig, messages, toolsDefinitions, systemPrompt, options)
+      throw new Error(`Unsupported Service Provider: ${modelConfig.serviceProvider}`)
   }
 }

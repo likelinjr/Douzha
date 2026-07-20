@@ -1,4 +1,4 @@
-import { run } from '../core/engine.js'
+import { runSimple } from '../core/engine.js'
 import { isDirective, executeDirective } from '../directive/index.js'
 import dotenv from 'dotenv'
 import readline from 'node:readline/promises'
@@ -55,7 +55,7 @@ async function bootstrap() {
         return
       }
 
-      await run(userInput)
+      await runSimple(userInput)
       rl.prompt()
     } catch (err: any) {
       console.error("\n💥 运行过程中发生崩溃:", err.message || err)

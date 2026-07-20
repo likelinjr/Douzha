@@ -1,29 +1,29 @@
 import { ToolDefinition } from "../../types/tool.js"
+import dedent from "dedent"
 
 export const commandToolsDefinition: ToolDefinition[] = [
   {
     type: "function",
     function: {
       name: "execute_command",
-      description: "在指定的目录中执行终端命令。适用于运行脚本、安装依赖、编译代码或查看系统状态。",
+      description: dedent`
+      在安全的 Linux 终端环境中执行完整的系统命令、运行脚本或操作文件，支持所有标准的 Bash 语法，
+      执行目录为 "/"， Doza 目录位于 "/Doza"，技能目录位于 "/Skills"，如果需要执行或访问到对应目录的文件，需要指明。
+      例如：python /Doza/Workspace/hello.py，
+      'pip install pdfplumber && python /Doza/Workspace/read_pdf.py' 或 'ls -la | grep pdf'
+      [核心环境说明]
+      1. 状态保持：这是一个有状态的常驻终端（Stateful Terminal）。通过 'cd' 切换的目录、'export' 设置的环境变量，在后续的调用中都会永久保留。你可以分步执行命令，不需要每次都用 '&&' 串联。
+      2. 严禁交互：绝对禁止执行任何需要人工输入或持续挂起的命令（如 vim, top, htop, tail -f，以及需要输入 y/n 的提示）。安装依赖或删除文件时，必须使用 -y 或 -f 等参数进行静默/强制执行。一旦触发交互式阻塞，终端将卡死并导致任务失败。
+      `,
       parameters: {
         type: "object",
         properties: {
-          file: {
+          command: {
             type: "string",
-            description: "可执行文件或命令，例如 'python', 'ls', 'ssh'等。"
-          },
-          args: {
-            type: "array",
-            items: { type: "string" },
-            description: "传递给命令的参数列表，例如 ['install', '--save'] 或 ['script.py']。"
-          },
-          cwd: {
-            type: "string",
-            description: "命令执行的目录，默认为当前目录。"
+            description: "完整终端命令字符串"
           }
         },
-        required: ["file"]
+        required: ["command"]
       }
     }
   }

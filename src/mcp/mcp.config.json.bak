@@ -1,0 +1,15 @@
+{
+  "mcpServers": {
+    "puppeteer": {
+      "command": "npx.cmd",
+      "args": [
+        "-y",
+        "@modelcontextprotocol/server-puppeteer"
+      ]
+    },
+    "mcdonalds": {
+      "url": "https://mcp.mcd.cn",
+      "token": "1y0ZKqBOSYslxhWj4vYu2jTT5YQW9jO0"
+    }
+  }
+}

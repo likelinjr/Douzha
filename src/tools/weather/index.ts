@@ -1,6 +1,7 @@
 import * as weatherTools from './tools.js'
+import { ToolHandlers} from '../../types/tool.js'
 
-export const weather_toolHandlers: Record<string, (args: any) => Promise<string>> = {
+export const weather_toolHandlers: ToolHandlers = {
   'get_24hours_weather': (args) => weatherTools.get24HoursWeather(args.city),
   'get_72hours_weather': (args) => weatherTools.get72HoursWeather(args.city),
   'get_3days_weather': (args) => weatherTools.get3DaysWeather(args.city),

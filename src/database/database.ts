@@ -56,7 +56,7 @@ export class DBManager {
     this.db = new DatabaseConstructor(dbPath)
     this.db.pragma('foreign_keys = ON')
     this.db.exec(SCHEMA)
-    commonLog(`✅ 数据库就绪，路径: ${dbPath}`)
+    commonLog(`✅ 数据库就绪: ${dbPath}`)
   }
 }
 export const dbManager = new DBManager()
