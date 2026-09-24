@@ -4,10 +4,10 @@ import { ToolCall,ToolResult } from '../types/tool.js'
 import { allToolsDefinition, toolHandlers } from '../tools/index.js'
 import { getTaskPlan } from '../tools/plan/tools.js'
 import { getSystemPrompt } from '../brain/prompt.js'
-import { runDecision } from '../brain/decisionMaker.js'
-import { loadMemory, getRecentContext, getLatestFullContext, saveMemory } from '../utils/memory.js'
+import { loadMemory, getLatestFullContext, saveMemory, getLatestSession } from '../utils/memory.js'
+import { Session } from '../database/historyMsg_dbTools.js'
 import { toolLog, commonLog, warnLog, errorLog, model_content, model_reasoning } from '../utils/debug.js'
-import { ADVANCED_MODEL, BASE_MODEL } from '../brain/models/config.js'
+import { BASE_MODEL } from '../brain/models/config.js'
 import { eventType } from '../types/events.js'
 
 export async function* run(
@@ -16,14 +16,11 @@ export async function* run(
   const memory = await loadMemory()
   const messages: Message[] = [{ role: 'user', content: userMessage }]
   const systemPrompt = getSystemPrompt()
-  const { intent, level, plan_id, session_id, remark } = await runDecision(userMessage)
-  const recentContext = intent === 'continue'
-    ? await getLatestFullContext()
-    : await getRecentContext()
-  const modelConfig = ( level === 'advanced'
-    ? ADVANCED_MODEL
-    : BASE_MODEL )
-  const remarkSection = remark ? `\n# 备注\n${remark}` : ''
+  const latestSession = await getLatestSession()
+  const session_id = latestSession?.id || Session.create("新对话", null)
+  const plan_id = latestSession?.plan_id ?? undefined
+  const recentContext = await getLatestFullContext()
+  const modelConfig = BASE_MODEL
 
   await saveMemory({
     session_id: Number(session_id),
@@ -39,9 +36,9 @@ export async function* run(
   const MAX_STEPS = 50
 
   while (isRunning && step <= MAX_STEPS) {
-    commonLog(`\n\n第 ${step} 次请求\n\n`)
+    commonLog(`\n第 ${step} 次请求\n\n`)
     const planInfo = await getTaskPlan({ planId: Number(plan_id), sessionId: Number(session_id) })
-    const dynamicSystemPrompt = `${systemPrompt}\n\n${memory}\n\n${recentContext}\n\n${planInfo}${remarkSection}`
+    const dynamicSystemPrompt = `${systemPrompt}\n\n${memory}\n\n${recentContext}\n\n${planInfo}`
 
     // 迭代模型返回的事件流
     const eventStream = think(

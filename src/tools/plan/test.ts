@@ -15,7 +15,8 @@ async function test() {
   ])
   console.log('创建结果:', createResult)
 
-  const planIdMatch = createResult.match(/PLAN_ID: (\d+)/)
+  const resultText = createResult.content[0]?.type === 'text' ? createResult.content[0].text : ''
+  const planIdMatch = resultText.match(/PLAN_ID: (\d+)/)
   const planId = planIdMatch ? Number(planIdMatch[1]) : null
   console.log('提取 planId:', planId)
 

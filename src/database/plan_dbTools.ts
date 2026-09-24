@@ -5,9 +5,9 @@ import { TaskPlanRow, PlanStepRow, FullTaskPlan, StepStatus } from '../types/pla
 export const TaskPlan = {
   create(plan: Omit<TaskPlanRow, 'id' | 'created_at' | 'updated_at'>): number {
     const stmt = dbManager.db.prepare(`
-      INSERT INTO task_plans (goal) VALUES (@goal)
-    `) 
-    return stmt.run(plan).lastInsertRowid as number
+      INSERT INTO task_plans (goal) VALUES ($goal)
+    `)
+    return stmt.run({ $goal: plan.goal }).lastInsertRowid as number
   },
   getBySessionId(sessionId: number | string): FullTaskPlan | undefined {
     const session = Session.getById(sessionId)
@@ -33,9 +33,14 @@ export const PlanStep = {
   create(step: Omit<PlanStepRow, 'id'>): number {
     const stmt = dbManager.db.prepare(`
       INSERT INTO plan_steps (plan_id, step, status, result, step_order)
-      VALUES (@plan_id, @step, @status, @result, @step_order)
-    `) 
-    return stmt.run(step).lastInsertRowid as number
+      VALUES ($plan_id, $step, $status, $result, $step_order)
+    `)
+    const s = step as unknown as Record<string, string | number | null | boolean>
+    const named: Record<string, string | number | null | boolean | bigint | Uint8Array> = {}
+    for (const [k, v] of Object.entries(s)) {
+      named[`$${k}`] = v
+    }
+    return stmt.run(named).lastInsertRowid as number
   },
   getByPlanId(planId: number): PlanStepRow[] {
     const stmt = dbManager.db.prepare(`

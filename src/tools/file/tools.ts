@@ -1,6 +1,5 @@
 import fs from 'fs/promises'
 import { validatePath, checkWritePermission, sanitizePaths } from '../../utils/security.js'
-import { fileURLToPath } from 'url'
 import path from 'path'
 import fsSync from 'fs'
 import { createReadStream, createWriteStream } from 'fs'
@@ -10,7 +9,7 @@ import AdmZip from 'adm-zip'
 import { ToolResult } from '../../types/tool.js'
 import * as tar from 'tar'
 
-const __dirname = path.dirname(fileURLToPath(import.meta.url))
+const __dirname = import.meta.dirname
 const WORKSPACE_DIR = path.resolve(__dirname, '../../../Doza/Workspace')
 const ROOT_DIR = path.resolve(__dirname, '../../../')
 const HOME_DIR = path.resolve(ROOT_DIR, 'Doza')

@@ -3,8 +3,6 @@ import { Message } from '../../types/message.js'
 import { ToolDefinition } from "../../types/tool.js"
 import { eventType } from "../../types/events.js"
 import { ModelConfig } from "../../types/modelConfig.js"
-import dotenv from 'dotenv'
-dotenv.config()
 
 export async function* GoogleThink(
   modelConfig: ModelConfig,
@@ -57,6 +55,14 @@ export async function* GoogleThink(
           }
           if (part.functionCall) {
             finalFunctionCalls.push(part.functionCall)
+            // 流式输出工具调用增量
+            yield {
+              type: 'tool_call_delta',
+              index: finalFunctionCalls.length - 1,
+              id: `${part.functionCall.name}-${Date.now()}`,
+              name: part.functionCall.name,
+              arguments: JSON.stringify(part.functionCall.args)
+            }
           }
         }
       }

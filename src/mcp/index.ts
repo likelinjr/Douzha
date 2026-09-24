@@ -1,6 +1,5 @@
 import path from "path"
 import * as fs from "fs/promises"
-import { fileURLToPath } from "url"
 import { Client } from "@modelcontextprotocol/sdk/client/index.js"
 import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js"
 import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js"
@@ -12,7 +11,7 @@ import { commonLog } from "../utils/debug.js"
 import { sanitizePaths } from "../utils/security.js"
 import { ToolContentItem } from "../types/tool.js"
 
-const __dirname = path.dirname(fileURLToPath(import.meta.url))
+const __dirname = import.meta.dirname
 const defaultConfigPath = path.join(__dirname, "mcp.config.json")
 
 export async function connectLocalMcpServer(command: string, args: string[]) {
@@ -98,7 +97,7 @@ export async function initializeMCP(configPath: string = defaultConfigPath ) {
     const config: McpConfig = JSON.parse(fileContent)
     for (const [serverName, serverConfig] of Object.entries(config.mcpServers)) {
       try {
-        if ("command" in serverConfig) {
+        if (serverConfig.type === "stdio") {
           commonLog(`\n⏳ 正在加载本地 MCP 服务: [${serverName}]...`)
           const local = await connectLocalMcpServer(serverConfig.command, serverConfig.args)
           allToolsDefinition.push(...transformMcpTools(local.tools))
@@ -107,9 +106,11 @@ export async function initializeMCP(configPath: string = defaultConfigPath ) {
           }
           commonLog(`\n✅ 本地服务 [${serverName}] 工具加入完成，加载数量: ${local.tools.length}`)
         }
-        else if ("url" in serverConfig) {
+        else if (serverConfig.type === "http" || serverConfig.type === "streamablehttp") {
           commonLog(`\n⏳ 正在加载远程 MCP 服务: [${serverName}]...`)
-          const remote = await connectRemoteMcpServer(serverConfig.url, serverConfig.token)
+          // 从 headers.Authorization 提取 token
+          const token = serverConfig.headers?.Authorization?.replace(/^Bearer\s+/i, '') || ''
+          const remote = await connectRemoteMcpServer(serverConfig.url, token)
           allToolsDefinition.push(...transformMcpTools(remote.tools))
           for (const tool of remote.tools) {
             toolHandlers[tool.name] = await createMcpHandler(remote.client, tool.name)

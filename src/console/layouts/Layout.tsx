@@ -1,41 +1,12 @@
 import React, { useState } from 'react'
-import { Layout, Menu, Breadcrumb } from 'antd'
-import { useNavigate, Outlet, useLocation } from 'react-router-dom'
-import {
-  HomeOutlined,
-  ToolOutlined,
-  AppstoreOutlined,
-} from '@ant-design/icons'
+import { Layout, Breadcrumb } from 'antd'
+import { Outlet } from 'react-router-dom'
 import styles from './Layout.module.scss'
 
 const { Sider, Content, Header } = Layout
 
-const menuItems = [
-  {
-    key: '/home',
-    icon: <HomeOutlined />,
-    label: 'Home',
-  },
-  {
-    key: '/tool',
-    icon: <ToolOutlined />,
-    label: 'Tool',
-  },
-  {
-    key: '/skill',
-    icon: <AppstoreOutlined />,
-    label: 'Skill',
-  },
-]
-
 export const ConsoleLayout: React.FC = () => {
-  const navigate = useNavigate()
-  const location = useLocation()
   const [isCollapsed, setIsCollapsed] = useState(false)
-
-  const handleMenuClick = (e: { key: string }) => {
-    navigate(e.key)
-  }
 
   return (
     <Layout className={styles.layout}>
@@ -54,22 +25,12 @@ export const ConsoleLayout: React.FC = () => {
         >
           <img src="../assets/cat.png" alt="Logo" className={styles.logoImg} />
         </div>
-        <Menu
-          theme="dark"
-          mode="inline"
-          selectedKeys={[location.pathname]}
-          items={menuItems}
-          onClick={handleMenuClick}
-        />
       </Sider>
       <Layout>
         <Header className={styles.header}>
           <Breadcrumb
             style={{ fontSize: '17px' }}
-            items={[
-              { title: 'Console' },
-              { title: menuItems.find(item => item.key === location.pathname)?.label || 'Home' },
-            ]}
+            items={[{ title: 'Console' }]}
           />
         </Header>
         <Content className={styles.content}>

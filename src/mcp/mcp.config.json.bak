@@ -1,15 +1,26 @@
 {
   "mcpServers": {
     "puppeteer": {
+      "type": "stdio",
       "command": "npx.cmd",
       "args": [
         "-y",
         "@modelcontextprotocol/server-puppeteer"
       ]
     },
-    "mcdonalds": {
+    "mcd-mcp": {
+      "type": "streamablehttp",
       "url": "https://mcp.mcd.cn",
-      "token": "1y0ZKqBOSYslxhWj4vYu2jTT5YQW9jO0"
+      "headers": {
+        "Authorization": "Bearer 1y0ZKqBOSYslxhWj4vYu2jTT5YQW9jO0"
+      }
+    },
+    "my-coffee": {
+      "type": "streamablehttp",
+      "url": "https://gwmcp.lkcoffee.com/order/user/mcp",
+      "headers": {
+        "Authorization": "Bearer 7f1b88fdf9ec44c38a41b866b686af342mcpLUCKIN_MCP_AI"
+      }
     }
   }
 }

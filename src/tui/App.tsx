@@ -1,54 +1,43 @@
-import React, { useState, useCallback } from 'react'
-import { Box, Newline, Text, useApp, useInput } from 'ink'
+import { useState, useRef, useEffect } from 'react'
+import { useTerminalDimensions } from '@opentui/react'
+import type { ScrollBoxRenderable } from '@opentui/core'
 import { Banner } from './components/Banner.js'
 import { StatusLine } from './components/StatusLine.js'
-import { Messages } from './components/Messages.js'
+import { Messages } from './components/message/index.js'
+import { InputBox } from './components/InputBox.js'
 import { useChat } from './hooks/useChat.js'
 
 export function App() {
   const [ready, setReady] = useState(false)
-  const [input, setInput] = useState('')
   const { status, messages, submitMessage } = useChat()
-  const { exit } = useApp()
+  const { height } = useTerminalDimensions()
+  const scrollRef = useRef<ScrollBoxRenderable>(null)
 
-  const onInput = useCallback((ch: string, key: { return?: boolean; escape?: boolean; backspace?: boolean; delete?: boolean; ctrl?: boolean; meta?: boolean }) => {
-    if (!ready) return
-    if (key.escape || (key.ctrl && ch === 'c')) { exit(); return }
-    if (ch.toLowerCase() === 'q' && input.length === 0) { exit(); return }
+  const toBottom = () => {
+    const box = scrollRef.current
+    if (!box) return
+    box.scrollTo({ x: 0, y: box.scrollHeight })
+  }
 
-    if (key.return) {
-      if (input.trim().length > 0) {
-        submitMessage(input)
-        setInput('')
-      }
-      return
-    }
-
-    if (key.backspace || key.delete) { setInput(prev => prev.slice(0, -1)); return }
-    if (!key.ctrl && !key.meta && ch) { setInput(prev => prev + ch) }
-  }, [ready, input, exit, submitMessage])
-
-  useInput(onInput)
+  useEffect(() => {
+    toBottom()
+  }, [messages, status])
 
   return (
-    <Box flexDirection="column">
-      <Banner onDone={() => setReady(true)} />
-
-      {ready && (
-        <>
-          <Box flexGrow={1} flexDirection="column" >
-            <Messages messages={messages} />
-          </Box>
-          <Box >
-            <StatusLine status={status} />
-          </Box>
-          <Box paddingTop={1}>
-            <Text bold color="cyan">{'>> '}</Text>
-            <Text>{input}</Text>
-            <Text dimColor>▎</Text>
-          </Box>
-        </>
-      )}
-    </Box>
+    <box flexDirection="column" height={height}>
+      <scrollbox
+        ref={scrollRef}
+        flexGrow={1}
+        stickyScroll={true}
+        stickyStart="bottom"
+      >
+        <box height={1} />
+        <Banner onDone={() => setReady(true)} />
+        {ready && <Messages messages={messages} />}
+        <StatusLine status={status} />
+      </scrollbox>
+      <box height={2} />
+      {ready && <InputBox onSubmit={submitMessage} />}
+    </box>
   )
 }

@@ -86,7 +86,8 @@ export async function* AnthropicThink(
       stream: true
     })
 
-    const toolUseMap = new Map<number, { id: string, name: string, inputJson: string }>()
+    const toolUseMap = new Map<number, { id: string, name: string, inputJson: string, toolIndex: number }>()
+    let nextToolIndex = 0
     let stopReason: string = ""
     let inputTokens = 0
     let cacheReadTokens = 0
@@ -99,11 +100,21 @@ export async function* AnthropicThink(
           break
         case 'content_block_start':
           if (event.content_block.type === 'tool_use') {
+            const toolIndex = nextToolIndex++
             toolUseMap.set(event.index, {
               id: event.content_block.id,
               name: event.content_block.name,
-              inputJson: ''
+              inputJson: '',
+              toolIndex
             })
+            // 流式输出工具调用增量的 id 和 name（仅一次）
+            yield {
+              type: 'tool_call_delta',
+              index: toolIndex,
+              id: event.content_block.id,
+              name: event.content_block.name,
+              arguments: undefined
+            }
           }
           break
         case 'content_block_delta':
@@ -117,6 +128,14 @@ export async function* AnthropicThink(
             const entry = toolUseMap.get(event.index)
             if (entry) {
               entry.inputJson += event.delta.partial_json
+              // 流式输出工具调用增量（与 OpenAI 行为一致）
+              yield {
+                type: 'tool_call_delta',
+                index: entry.toolIndex,
+                id: undefined,
+                name: undefined,
+                arguments: event.delta.partial_json
+              }
             }
           }
           break
@@ -133,7 +152,9 @@ export async function* AnthropicThink(
     }
 
     const toolCalls: ToolCall[] = []
-    for (const [, entry] of toolUseMap) {
+    // 按 toolIndex 排序，确保 calls 数组索引与 tool_call_delta 一致
+    const sortedEntries = Array.from(toolUseMap.values()).sort((a, b) => a.toolIndex - b.toolIndex)
+    for (const entry of sortedEntries) {
       toolCalls.push({
         id: entry.id,
         type: 'function',

@@ -1,7 +1,5 @@
-import dotenv from "dotenv"
 import { initProxy } from "../../utils/proxy.js"
 import { ToolResult } from '../../types/tool.js'
-dotenv.config()
 
 export async function webSearch(query: string): Promise<ToolResult> {
   initProxy()

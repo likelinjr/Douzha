@@ -1,6 +1,5 @@
 import fs from 'fs'
 import path from 'path'
-import { fileURLToPath } from 'url'
 import { promisify } from 'util'
 import { execFile } from 'child_process'
 import { wrapSkill } from '../../labels/index.js'
@@ -10,8 +9,7 @@ import { ToolResult } from '../../types/tool.js'
 
 const execFilePromise = promisify(execFile)
 
-const __filename = fileURLToPath(import.meta.url)
-const __dirname = path.dirname(__filename)
+const __dirname = import.meta.dirname
 const ROOT_DIR = path.resolve(__dirname, '../../')
 const SKILLS_DIR = path.resolve(ROOT_DIR, 'skills/Skills')
 

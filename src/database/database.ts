@@ -1,5 +1,4 @@
-import DatabaseConstructor from 'better-sqlite3'
-import { Database } from 'better-sqlite3'
+import { Database } from 'bun:sqlite'
 import path from 'path'
 import fs from 'fs'
 import { commonLog } from '../utils/debug.js'
@@ -53,9 +52,9 @@ export class DBManager {
       fs.mkdirSync(path.dirname(dbPath), { recursive: true })
       commonLog(`📂 已创建数据库目录: ${path.dirname(dbPath)}`)
     }
-    this.db = new DatabaseConstructor(dbPath)
-    this.db.pragma('foreign_keys = ON')
-    this.db.exec(SCHEMA)
+    this.db = new Database(dbPath)
+    this.db.run("PRAGMA foreign_keys = ON")
+    this.db.run(SCHEMA)
     commonLog(`✅ 数据库就绪: ${dbPath}`)
   }
 }

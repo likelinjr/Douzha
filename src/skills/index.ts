@@ -1,22 +1,30 @@
 import fs from 'fs'
 import path from 'path'
 import { SkillMeta } from '../types/skill.js'
-import { fileURLToPath } from 'url'
 import { parse } from 'yaml'
 
-const __filename = fileURLToPath(import.meta.url)
-const __dirname = path.dirname(__filename)
+const __dirname = import.meta.dirname
 
 function preprocessYaml(content: string): string {
-  return content.replace(/^(\w+):\s*(.+:.*)$/gm, (match, key, value) => {
+  // Split into lines to process each line individually
+  return content.split('\n').map(line => {
+    // Only process top-level keys (no leading whitespace)
+    const topLevelMatch = line.match(/^(\w+):\s*(.+:.*)$/)
+    if (!topLevelMatch) return line
+    
+    const [, key, value] = topLevelMatch
+    
+    // Skip if value is already quoted
     if (value.trim().startsWith('"') || value.trim().startsWith("'")) {
-      return match
+      return line
     }
+    // Skip if value is a list item
     if (value.trim().startsWith('-')) {
-      return match
+      return line
     }
+    
     return `${key}: "${value.replace(/"/g, '\\"')}"`
-  })
+  }).join('\n')
 }
 
 function parseSkillMarkdown(content: string): SkillMeta {

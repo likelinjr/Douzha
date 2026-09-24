@@ -1,5 +1,6 @@
-import React, { useEffect, useState } from 'react'
-import { Box, Text } from 'ink'
+import { useEffect, useState } from 'react'
+import { TextAttributes } from '@opentui/core'
+import { TUI_THEMES } from '../../config/themes/colors.js'
 
 type Status = 'connecting' | 'deciding' | ''
 type Props = {
@@ -15,7 +16,6 @@ export function StatusLine({ status }: Props) {
 
   useEffect(() => {
     if (!status) return
-
     const timer = setInterval(() => {
       setFrame(f => f + 1)
     }, 70)
@@ -30,16 +30,16 @@ export function StatusLine({ status }: Props) {
   const pos = ((frame * 0.5) % (len + 6)) - 3
 
   return (
-    <Box marginTop={1} marginX={2}>
-    <Text >
-      {chars.map((ch, i) => {
-        const dist = Math.abs(i - pos)
-        if (dist <= 2) {
-          return <Text key={i} bold color="cyan">{ch}</Text>
-        }
-        return <Text key={i} dimColor>{ch}</Text>
-      })}
-    </Text>      
-    </Box>
+    <box marginTop={1} marginX={2} flexDirection="row">
+      <text>
+        {chars.map((ch, i) => {
+          const dist = Math.abs(i - pos)
+          if (dist <= 2) {
+            return <span key={i} fg={TUI_THEMES} attributes={TextAttributes.BOLD}>{ch}</span>
+          }
+          return <span key={i} attributes={TextAttributes.DIM}>{ch}</span>
+        })}
+      </text>
+    </box>
   )
 }

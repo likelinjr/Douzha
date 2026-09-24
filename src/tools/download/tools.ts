@@ -1,10 +1,9 @@
 import fs from 'fs/promises'
 import path from 'path'
-import { fileURLToPath } from 'url'
 import { sanitizePaths } from '../../utils/security.js'
 import { ToolResult } from '../../types/tool.js'
 
-const __dirname = path.dirname(fileURLToPath(import.meta.url))
+const __dirname = import.meta.dirname
 const DOWNLOAD_DIR = path.resolve(__dirname, '../../../Doza/Downloads')
 
 export async function downloadFile(url: string, filename?: string): Promise<ToolResult> {

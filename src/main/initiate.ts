@@ -1,8 +1,7 @@
 import fss from 'fs'
-import { fileURLToPath } from 'url'
 import path from 'path'
 import { commonLog, Log } from '../utils/debug.js'
-import { COLORS } from '../config/themes/colors.js'
+import { getDevColor } from '../config/themes/colors.js'
 import { get24HoursWeather, get3DaysWeather, getAirQuality } from '../tools/weather/tools.js'
 import { loadMemory, getRecentContext, getLatestFullContext } from '../utils/memory.js'
 import { getSkillsPrompt } from '../skills/prompt.js'
@@ -13,8 +12,7 @@ import { downloadFile } from '../tools/download/tools.js'
 // import '../tools/file/test.js'
 import { initializeMCP } from '../mcp/index.js'
 
-const __filename = fileURLToPath(import.meta.url)
-const __dirname = path.dirname(__filename)
+const __dirname = import.meta.dirname
 const ROOT_DIR = path.resolve(__dirname, '../../')
 const HOME_DIR = path.resolve(ROOT_DIR, 'Doza')
 const DEFAULT_FOLDERS = ['Workspace', 'Documents', 'Downloads', 'Music', 'Photos']
@@ -70,7 +68,7 @@ function compactPreview(text: string, headLines: number = 3, tailLines: number =
 
 const latestFullContext_result = await getLatestFullContext()
 commonLog("\n\n当前对话完整上下文长度", latestFullContext_result.length)
-Log(COLORS.AMBER, "\n\n"+latestFullContext_result)
+Log(getDevColor('AMBER'), "\n\n"+latestFullContext_result)
 
 // commonLog(getSkillsPrompt())
 // commonLog(await executeSkill('pdf'))

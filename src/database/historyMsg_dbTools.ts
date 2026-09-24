@@ -26,9 +26,14 @@ export const Message = {
   create(msg: MessageRow): number {
     const stmt = dbManager.db.prepare(`
       INSERT INTO messages (session_id, role, content, reasoning_content, tool_calls, tool_call_id)
-      VALUES (@session_id, @role, @content, @reasoning_content, @tool_calls, @tool_call_id)
-    `) 
-    return stmt.run(msg).lastInsertRowid as number
+      VALUES ($session_id, $role, $content, $reasoning_content, $tool_calls, $tool_call_id)
+    `)
+    const row = msg as unknown as Record<string, string | number | null | boolean>
+    const named: Record<string, string | number | null | boolean | bigint | Uint8Array> = {}
+    for (const [k, v] of Object.entries(row)) {
+      named[`$${k}`] = v
+    }
+    return stmt.run(named).lastInsertRowid as number
   },
   delete(id: number): boolean {
     const stmt = dbManager.db.prepare(`DELETE FROM messages WHERE id = ?`) 

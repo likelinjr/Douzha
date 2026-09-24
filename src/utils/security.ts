@@ -1,7 +1,5 @@
 import path from 'path'
-import { fileURLToPath } from 'url'
-const __filename = fileURLToPath(import.meta.url)
-const __dirname = path.dirname(__filename)
+const __dirname = import.meta.dirname
 const ROOT_DIR = path.resolve(__dirname, '../../')
 const HOME_DIR = path.resolve(ROOT_DIR, 'Doza')
 const WORKSPACE_DIR = path.resolve(HOME_DIR, 'Workspace')

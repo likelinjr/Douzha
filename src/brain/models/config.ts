@@ -1,6 +1,4 @@
-import dotenv from 'dotenv'
 import { ModelConfig } from '../../types/modelConfig.js'
-dotenv.config()
 
 // const Mimo = {
 //   baseURL: "https://api.xiaomimimo.com/v1",
@@ -52,22 +50,22 @@ dotenv.config()
 //   apiKey: process.env.LONGCAT_API_KEY || "",
 //   serviceProvider: "Anthropic"
 // }
-// const Anthropic = {
-//   baseURL: "https://open.bigmodel.cn/api/anthropic",
-//   apiKey: process.env.ZHIPU_API_KEY || "",
-//   serviceProvider: "Anthropic"
-// }
-const LongCat = {
-  baseURL: "https://api.longcat.chat/openai",
-  apiKey: process.env.LONGCAT_API_KEY || "",
-  serviceProvider: "LongCat"
+const DOTS = {
+  baseURL: "https://note3-prev-api.askdiandian.com/v1",
+  apiKey: process.env.DOTS_API_KEY || "",
+  serviceProvider: "Dots"
 }
-// const LocalModel = {
-//   baseURL: "http://192.168.52.139:1234/v1",
-//   apiKey: "sk-lm-J76FZUc6:9hRfWUpQcQG4912KTO0H",
-//   serviceProvider: "Local"
+// const LongCat = {
+//   baseURL: "https://api.longcat.chat/openai",
+//   apiKey: process.env.LONGCAT_API_KEY || "",
+//   serviceProvider: "LongCat"
 // }
-// 
+
+export const BASE_MODEL: ModelConfig = {
+  ...DOTS,
+  protocol: "OpenAI",
+  modelName: "dots3-note-prev"
+}
 
 // gemini-3.1-flash-lite 非思考
 // gemma-4-26b-a4b-it
@@ -77,40 +75,3 @@ const LongCat = {
 // GPT-5.4 mini
 // mimo-v2.5-pro
 // LongCat-2.0
-
-export const DECISION_MAKER: ModelConfig = {
-  ...LongCat,
-  protocol: "OpenAI",
-  modelName: "LongCat-2.0"
-}
-export const ADVANCED_MODEL: ModelConfig = {
-  ...LongCat,
-  protocol: "OpenAI",  
-  modelName: "LongCat-2.0"
-}
-export const BASE_MODEL: ModelConfig = {
-  ...LongCat,
-  protocol: "OpenAI",
-  modelName: "LongCat-2.0"
-}
-
-export const IS_DECIDE = false
-
-// export const DECISION_MAKER: ModelConfig = {
-//   baseURL: "http://localhost:8081/v1",
-//   apiKey: "",
-//   protocol: "OpenAI",
-//   modelName: ""
-// }
-// export const ADVANCED_MODEL: ModelConfig = {
-//   baseURL: "http://localhost:8081/v1",
-//   apiKey: "",
-//   protocol: "OpenAI",  
-//   modelName: ""
-// }
-// export const BASE_MODEL: ModelConfig = {
-//   baseURL: "http://localhost:8081/v1",
-//   apiKey: "",
-//   protocol: "OpenAI",
-//   modelName: ""
-// }

@@ -1,14 +1,13 @@
+import './enable-debug.js' // 必须在最前面导入，确保 DEBUG 模式在模块加载前启用
+
 import { runSimple } from '../core/engine.js'
 import { isDirective, executeDirective } from '../directive/index.js'
-import dotenv from 'dotenv'
 import readline from 'node:readline/promises'
 import { stdin as input, stdout as output } from 'node:process'
 import { character } from './character.js'
 import { poems } from './poems.js'
 import { getCurrentTime, osInfo } from '../utils/system.js'
 import './initiate.js'
-
-dotenv.config()
 
 async function printStartupBanner() {
   const lines = character.split('\n')
